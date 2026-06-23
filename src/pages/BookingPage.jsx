@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Avatar from "../components/Avatar";
 import Pill from "../components/Pill";
 import TutorPicker from "../components/TutorPicker";
@@ -5,7 +6,17 @@ import { tutors } from "../data/mockTutors";
 import { C, inputStyle } from "../data/theme";
 
 export default function BookingPage({ tutorId, onSelectTutor, setPage }) {
+  const [selectedSessionId, setSelectedSessionId] = useState("");
+
   const tutor = tutors.find((item) => item.id === tutorId) ?? null;
+
+  const selectedSession =
+    tutor?.sessionTypes.find((session) => session.id === selectedSessionId) ??
+    null;
+
+  useEffect(() => {
+    setSelectedSessionId("");
+  }, [tutorId]);
 
   return (
     <section>
@@ -33,7 +44,7 @@ export default function BookingPage({ tutorId, onSelectTutor, setPage }) {
           border: `1px solid ${C.border}`,
           borderRadius: 18,
           padding: 22,
-          maxWidth: 680,
+          maxWidth: 720,
         }}
       >
         <div style={{ marginBottom: 18 }}>
@@ -65,6 +76,97 @@ export default function BookingPage({ tutorId, onSelectTutor, setPage }) {
                 <Pill key={subject}>{subject}</Pill>
               ))}
             </div>
+
+            <div style={{ marginTop: 22 }}>
+              <label
+                style={{
+                  display: "block",
+                  color: C.white,
+                  fontWeight: 900,
+                  marginBottom: 8,
+                }}
+              >
+                Choose a session type
+              </label>
+
+              <select
+                value={selectedSessionId}
+                onChange={(event) => setSelectedSessionId(event.target.value)}
+                style={{
+                  ...inputStyle,
+                  width: "100%",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="">Select a session type...</option>
+                {tutor.sessionTypes.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.title} — {session.durationMinutes} min — R
+                    {session.price}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedSession ? (
+              <div
+                style={{
+                  marginTop: 14,
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 14,
+                  padding: 16,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div>
+                    <div style={{ color: C.white, fontWeight: 900 }}>
+                      {selectedSession.title}
+                    </div>
+                    <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>
+                      {selectedSession.durationMinutes} min ·{" "}
+                      {selectedSession.format}
+                    </div>
+                  </div>
+
+                  <div style={{ color: C.spark, fontWeight: 950 }}>
+                    R{selectedSession.price}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    color: C.muted,
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    marginTop: 10,
+                  }}
+                >
+                  {selectedSession.description}
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  marginTop: 14,
+                  background: C.surface,
+                  border: `1px dashed ${C.border}`,
+                  borderRadius: 14,
+                  padding: 16,
+                  color: C.muted,
+                  lineHeight: 1.6,
+                }}
+              >
+                Choose a session type before requesting a booking.
+              </div>
+            )}
           </>
         ) : (
           <div
@@ -82,24 +184,6 @@ export default function BookingPage({ tutorId, onSelectTutor, setPage }) {
           </div>
         )}
 
-        <div
-          style={{
-            marginTop: 20,
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 14,
-            padding: 16,
-          }}
-        >
-          <div style={{ color: C.white, fontWeight: 900, marginBottom: 6 }}>
-            Session type selection coming soon
-          </div>
-          <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.6 }}>
-            Later, this is where the learner will choose between different
-            tutor-created session types, durations, formats, and prices.
-          </div>
-        </div>
-
         <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
           <input placeholder="Learner name" style={inputStyle} />
           <input placeholder="Preferred subject/topic" style={inputStyle} />
@@ -116,7 +200,7 @@ export default function BookingPage({ tutorId, onSelectTutor, setPage }) {
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 16 }}>
           <button
-            disabled={!tutor}
+            disabled={!tutor || !selectedSession}
             style={{
               background: C.spark,
               color: "#000",
@@ -124,8 +208,8 @@ export default function BookingPage({ tutorId, onSelectTutor, setPage }) {
               borderRadius: 12,
               padding: "12px 18px",
               fontWeight: 900,
-              cursor: tutor ? "pointer" : "not-allowed",
-              opacity: tutor ? 1 : 0.45,
+              cursor: tutor && selectedSession ? "pointer" : "not-allowed",
+              opacity: tutor && selectedSession ? 1 : 0.45,
             }}
           >
             Request booking

@@ -108,7 +108,9 @@ export default function DiscoverPage({ onViewTutor }) {
                 }}
               >
                 <span>★ {tutor.rating}</span>
-                <strong style={{ color: C.spark }}>R{tutor.price}/hr</strong>
+                <strong style={{ color: C.spark }}>
+                  Sessions from R{Math.min(...tutor.sessionTypes.map((session) => session.price))}
+                </strong>
               </div>
 
               <button

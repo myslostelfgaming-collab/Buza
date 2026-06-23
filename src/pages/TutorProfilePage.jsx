@@ -68,7 +68,7 @@ export default function TutorProfilePage({ tutorId, setPage, onBookTutor }) {
           border: `1px solid ${C.border}`,
           borderRadius: 18,
           padding: 22,
-          maxWidth: 720,
+          maxWidth: 760,
         }}
       >
         <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
@@ -94,21 +94,60 @@ export default function TutorProfilePage({ tutorId, setPage, onBookTutor }) {
           <Pill color={C.blue}>Online</Pill>
         </div>
 
-        <div
-          style={{
-            marginTop: 22,
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 14,
-            padding: 16,
-          }}
-        >
-          <div style={{ color: C.white, fontWeight: 900, marginBottom: 6 }}>
-            Session options coming soon
-          </div>
-          <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.6 }}>
-            Tutors will be able to create different session types, durations,
-            formats, and prices. For now, this profile is using mock tutor data.
+        <div style={{ marginTop: 26 }}>
+          <h3 style={{ color: C.white, marginBottom: 12 }}>Session types</h3>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {tutor.sessionTypes.map((session) => (
+              <div
+                key={session.id}
+                style={{
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 14,
+                  padding: 16,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div>
+                    <div style={{ color: C.white, fontWeight: 900 }}>
+                      {session.title}
+                    </div>
+                    <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>
+                      {session.durationMinutes} min · {session.format}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      color: C.spark,
+                      fontWeight: 950,
+                      fontSize: 18,
+                    }}
+                  >
+                    R{session.price}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    color: C.muted,
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    marginTop: 10,
+                  }}
+                >
+                  {session.description}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
