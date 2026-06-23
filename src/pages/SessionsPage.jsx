@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { bookings, advertisedSessions } from "../data/mockBookings";
 import { availabilityWindows, blockedTimes } from "../data/mockCalendar";
 import { tutors } from "../data/mockTutors";
-import { defaultCurrentUserId, users } from "../data/mockUsers";
+import { users } from "../data/mockUsers";
 import { C } from "../data/theme";
 
 const weekDays = [
@@ -145,11 +145,8 @@ function TimetableEventCard({ event, currentUser }) {
   );
 }
 
-export default function SessionsPage({ extraBookings = [] }) {
-  const [currentUserId, setCurrentUserId] = useState(defaultCurrentUserId);
+export default function SessionsPage({ currentUser, extraBookings = [] }) {
   const [calendarView, setCalendarView] = useState("week");
-
-  const currentUser = users.find((user) => user.id === currentUserId) ?? users[0];
 
   const allBookings = useMemo(
     () => [...bookings, ...extraBookings],
@@ -222,7 +219,7 @@ export default function SessionsPage({ extraBookings = [] }) {
       <h1 style={{ color: C.white, marginTop: 0 }}>My Timetable</h1>
 
       <p style={{ color: C.muted, lineHeight: 1.6 }}>
-        This page is personal to the logged-in user. Students see their booked
+        This page is personal to the signed-in user. Students see their booked
         sessions. Tutors see their teaching timetable, advertised group classes,
         availability, and blocked times.
       </p>
@@ -240,38 +237,12 @@ export default function SessionsPage({ extraBookings = [] }) {
         }}
       >
         <div>
-          <label
-            style={{
-              display: "block",
-              color: C.white,
-              fontWeight: 900,
-              marginBottom: 8,
-            }}
-          >
-            Demo user
-          </label>
-
-          <select
-            value={currentUserId}
-            onChange={(event) => setCurrentUserId(event.target.value)}
-            style={{
-              width: "100%",
-              background: C.surface,
-              color: C.text,
-              border: `1px solid ${C.border}`,
-              borderRadius: 10,
-              padding: "12px 14px",
-              fontSize: 14,
-              fontFamily: "inherit",
-              cursor: "pointer",
-            }}
-          >
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name} — {user.role}
-              </option>
-            ))}
-          </select>
+          <div style={{ color: C.white, fontWeight: 900, marginBottom: 4 }}>
+            Signed in as
+          </div>
+          <div style={{ color: C.muted, fontSize: 14 }}>
+            {currentUser.name} · {currentUser.role}
+          </div>
         </div>
 
         <div>

@@ -11,6 +11,7 @@ import { tutors } from "../data/mockTutors";
 import { C, inputStyle } from "../data/theme";
 
 export default function BookingPage({
+  currentUser,
   tutorId,
   onSelectTutor,
   setPage,
@@ -19,9 +20,10 @@ export default function BookingPage({
 }) {
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState("");
-  const [learnerName, setLearnerName] = useState("");
   const [topic, setTopic] = useState("");
   const [notes, setNotes] = useState("");
+
+  const isStudent = currentUser.role === "student";
 
   const tutor = tutors.find((item) => item.id === tutorId) ?? null;
 
@@ -44,8 +46,7 @@ export default function BookingPage({
   const selectedSlot =
     availableSlots.find((slot) => slot.id === selectedSlotId) ?? null;
 
-  const canRequestBooking =
-    tutor && selectedSession && selectedSlot && learnerName.trim();
+  const canRequestBooking = isStudent && tutor && selectedSession && selectedSlot;
 
   const handleRequestBooking = () => {
     if (!canRequestBooking) return;
@@ -54,14 +55,12 @@ export default function BookingPage({
       tutorId: tutor.id,
       sessionTypeId: selectedSession.id,
       slot: selectedSlot,
-      learnerName,
       topic,
       notes,
     });
 
     setSelectedSessionId("");
     setSelectedSlotId("");
-    setLearnerName("");
     setTopic("");
     setNotes("");
   };
@@ -94,6 +93,25 @@ export default function BookingPage({
       </button>
 
       <h1 style={{ color: C.white, marginTop: 0 }}>Book a Session</h1>
+
+      {!isStudent && (
+        <div
+          style={{
+            background: C.spark + "18",
+            border: `1px solid ${C.spark}`,
+            borderRadius: 14,
+            padding: 14,
+            color: C.text,
+            lineHeight: 1.6,
+            marginBottom: 16,
+            maxWidth: 760,
+          }}
+        >
+          You are currently signed in as a tutor. In this prototype, booking
+          requests can only be made by student accounts. Switch to a student user
+          in the header to test the student booking flow.
+        </div>
+      )}
 
       <div
         style={{
@@ -338,10 +356,18 @@ export default function BookingPage({
 
         <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
           <input
-            value={learnerName}
-            onChange={(event) => setLearnerName(event.target.value)}
+            value={
+              isStudent
+                ? currentUser.name
+                : "Switch to a student account to book"
+            }
+            disabled
             placeholder="Learner name"
-            style={inputStyle}
+            style={{
+              ...inputStyle,
+              opacity: 0.8,
+              cursor: "not-allowed",
+            }}
           />
 
           <input
