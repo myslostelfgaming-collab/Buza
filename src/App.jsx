@@ -25,7 +25,12 @@ function App() {
         setPage={setPage}
       />
     ),
-    booking: <BookingPage />,
+    booking: (
+      <BookingPage
+        tutorId={selectedTutorId}
+        setPage={setPage}
+      />
+    ),
     sessions: <SessionsPage />,
   };
 
