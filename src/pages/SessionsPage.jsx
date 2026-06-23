@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { bookings, advertisedSessions } from "../data/mockBookings";
+import { availabilityWindows, blockedTimes } from "../data/mockCalendar";
 import { tutors } from "../data/mockTutors";
 import { defaultCurrentUserId, users } from "../data/mockUsers";
 import { C } from "../data/theme";
@@ -41,7 +42,16 @@ function statusColor(status) {
   if (status === "confirmed") return C.green;
   if (status === "pending") return C.spark;
   if (status === "advertised") return C.blue;
+  if (status === "available") return C.green;
+  if (status === "blocked") return C.muted;
   return C.muted;
+}
+
+function getEventTitle(event, sessionType) {
+  if (event.kind === "availability") return event.title;
+  if (event.kind === "blocked") return event.title;
+  if (event.kind === "group") return event.title;
+  return sessionType?.title ?? "Session";
 }
 
 function TimetableEventCard({ event, currentUser }) {
@@ -50,6 +60,8 @@ function TimetableEventCard({ event, currentUser }) {
   const student = event.studentId ? getUser(event.studentId) : null;
 
   const isGroupSession = event.kind === "group";
+  const isAvailability = event.kind === "availability";
+  const isBlocked = event.kind === "blocked";
 
   return (
     <div
@@ -60,6 +72,7 @@ function TimetableEventCard({ event, currentUser }) {
         borderRadius: 12,
         padding: 12,
         marginTop: 10,
+        opacity: isBlocked ? 0.75 : 1,
       }}
     >
       <div style={{ color: C.white, fontWeight: 900, fontSize: 14 }}>
@@ -67,7 +80,7 @@ function TimetableEventCard({ event, currentUser }) {
       </div>
 
       <div style={{ color: C.text, fontWeight: 800, marginTop: 6 }}>
-        {isGroupSession ? event.title : sessionType?.title ?? "Session"}
+        {getEventTitle(event, sessionType)}
       </div>
 
       {currentUser.role === "student" && (
@@ -76,11 +89,23 @@ function TimetableEventCard({ event, currentUser }) {
         </div>
       )}
 
-      {currentUser.role === "tutor" && (
+      {currentUser.role === "tutor" && !isAvailability && !isBlocked && (
         <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>
           {isGroupSession
             ? `${event.bookedStudentIds.length}/${event.capacity} learners booked`
             : `Student: ${student?.name ?? "Unknown student"}`}
+        </div>
+      )}
+
+      {isAvailability && (
+        <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>
+          Open teaching window for future bookings
+        </div>
+      )}
+
+      {isBlocked && (
+        <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>
+          {event.reason}
         </div>
       )}
 
@@ -145,9 +170,26 @@ export default function SessionsPage() {
           kind: "group",
         }));
 
-      return [...tutorBookings, ...tutorGroupSessions].sort((a, b) =>
-        a.startTime.localeCompare(b.startTime)
-      );
+      const tutorAvailability = availabilityWindows
+        .filter((window) => window.tutorId === currentUser.tutorId)
+        .map((window) => ({
+          ...window,
+          kind: "availability",
+        }));
+
+      const tutorBlockedTimes = blockedTimes
+        .filter((blocked) => blocked.tutorId === currentUser.tutorId)
+        .map((blocked) => ({
+          ...blocked,
+          kind: "blocked",
+        }));
+
+      return [
+        ...tutorAvailability,
+        ...tutorBlockedTimes,
+        ...tutorBookings,
+        ...tutorGroupSessions,
+      ].sort((a, b) => a.startTime.localeCompare(b.startTime));
     }
 
     return [];
@@ -159,7 +201,8 @@ export default function SessionsPage() {
 
       <p style={{ color: C.muted, lineHeight: 1.6 }}>
         This page is personal to the logged-in user. Students see their booked
-        sessions. Tutors see their teaching timetable and advertised group classes.
+        sessions. Tutors see their teaching timetable, advertised group classes,
+        availability, and blocked times.
       </p>
 
       <div
@@ -237,6 +280,24 @@ export default function SessionsPage() {
             ))}
           </div>
         </div>
+
+        {currentUser.role === "tutor" && (
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+              color: C.muted,
+              fontSize: 13,
+            }}
+          >
+            <span>Legend:</span>
+            <span style={{ color: C.green }}>● Available</span>
+            <span style={{ color: C.blue }}>● Group class</span>
+            <span style={{ color: C.spark }}>● Pending</span>
+            <span style={{ color: C.muted }}>● Blocked</span>
+          </div>
+        )}
       </div>
 
       <div
@@ -342,4 +403,4 @@ export default function SessionsPage() {
       </div>
     </section>
   );
-}
+} 
