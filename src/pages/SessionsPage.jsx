@@ -17,17 +17,32 @@ const weekDays = [
   { label: "Sun", date: "2026-06-28" },
 ];
 
+function applyAdvertisedSessionBookingOverrides(sessions, overrides) {
+  return sessions.map((session) => {
+    const extraStudentIds = overrides[session.id] ?? [];
+
+    return {
+      ...session,
+      bookedStudentIds: Array.from(
+        new Set([...(session.bookedStudentIds ?? []), ...extraStudentIds])
+      ),
+    };
+  });
+}
+
 export default function SessionsPage({
   currentUser,
   extraBookings = [],
   extraAvailabilityWindows = [],
   extraBlockedTimes = [],
   extraAdvertisedSessions = [],
+  advertisedSessionBookingOverrides = {},
   bookingStatusOverrides = {},
   onUpdateBookingStatus,
   onAddAvailabilityWindow,
   onAddBlockedTime,
   onAddAdvertisedSession,
+  onRemoveAdvertisedSession,
 }) {
   const [calendarView, setCalendarView] = useState("week");
 
@@ -51,8 +66,12 @@ export default function SessionsPage({
   );
 
   const allAdvertisedSessions = useMemo(
-    () => [...advertisedSessions, ...extraAdvertisedSessions],
-    [extraAdvertisedSessions]
+    () =>
+      applyAdvertisedSessionBookingOverrides(
+        [...advertisedSessions, ...extraAdvertisedSessions],
+        advertisedSessionBookingOverrides
+      ),
+    [extraAdvertisedSessions, advertisedSessionBookingOverrides]
   );
 
   const visibleEvents = useMemo(() => {
@@ -127,9 +146,9 @@ export default function SessionsPage({
       <h1 style={{ color: C.white, marginTop: 0 }}>My Timetable</h1>
 
       <p style={{ color: C.muted, lineHeight: 1.6 }}>
-        This page is personal to the signed-in user. Students see their booked
-        sessions. Tutors see their teaching timetable, advertised group classes,
-        availability, and blocked times.
+        This page is personal to the signed-in user. Students see sessions they
+        have booked or joined. Tutors see their teaching timetable, advertised
+        group classes, availability, and blocked times.
       </p>
 
       <div
@@ -246,6 +265,7 @@ export default function SessionsPage({
           visibleEvents={visibleEvents}
           currentUser={currentUser}
           onUpdateBookingStatus={onUpdateBookingStatus}
+          onRemoveAdvertisedSession={onRemoveAdvertisedSession}
         />
       </div>
     </section>

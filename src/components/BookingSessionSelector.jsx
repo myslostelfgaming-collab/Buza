@@ -6,6 +6,10 @@ export default function BookingSessionSelector({
   selectedSession,
   onSelectSession,
 }) {
+  const sessionTypes = Array.isArray(tutor?.sessionTypes)
+    ? tutor.sessionTypes
+    : [];
+
   return (
     <div style={{ marginTop: 22 }}>
       <label
@@ -29,12 +33,28 @@ export default function BookingSessionSelector({
         }}
       >
         <option value="">Select a session type...</option>
-        {tutor.sessionTypes.map((session) => (
+        {sessionTypes.map((session) => (
           <option key={session.id} value={session.id}>
             {session.title} — {session.durationMinutes} min — R{session.price}
           </option>
         ))}
       </select>
+
+      {sessionTypes.length === 0 && (
+        <div
+          style={{
+            marginTop: 12,
+            background: C.surface,
+            border: `1px dashed ${C.border}`,
+            borderRadius: 14,
+            padding: 14,
+            color: C.muted,
+            lineHeight: 1.6,
+          }}
+        >
+          This tutor does not have session types set up yet.
+        </div>
+      )}
 
       {selectedSession && (
         <div

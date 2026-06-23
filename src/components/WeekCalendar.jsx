@@ -10,6 +10,7 @@ export default function WeekCalendar({
   visibleEvents,
   currentUser,
   onUpdateBookingStatus,
+  onRemoveAdvertisedSession,
 }) {
   return (
     <div
@@ -45,6 +46,7 @@ export default function WeekCalendar({
                   event={event}
                   currentUser={currentUser}
                   onUpdateBookingStatus={onUpdateBookingStatus}
+                  onRemoveAdvertisedSession={onRemoveAdvertisedSession}
                 />
               ))
             ) : (

@@ -67,6 +67,7 @@ export default function TutorGroupClassCreator({
       pricePerLearner: priceNumber,
       bookedStudentIds: [],
       status: "advertised",
+      isUserCreated: true,
     });
   };
 

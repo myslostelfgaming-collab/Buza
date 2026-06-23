@@ -43,6 +43,7 @@ export default function TimetableEventCard({
   event,
   currentUser,
   onUpdateBookingStatus,
+  onRemoveAdvertisedSession,
 }) {
   const tutor = getTutor(event.tutorId);
   const sessionType = getSessionType(tutor, event.sessionTypeId);
@@ -58,6 +59,12 @@ export default function TimetableEventCard({
     isBooking &&
     event.status === "pending" &&
     typeof onUpdateBookingStatus === "function";
+
+  const canTutorRemoveGroupClass =
+    currentUser.role === "tutor" &&
+    isGroupSession &&
+    event.isUserCreated &&
+    typeof onRemoveAdvertisedSession === "function";
 
   return (
     <div
@@ -100,6 +107,12 @@ export default function TimetableEventCard({
       {currentUser.role === "tutor" && isGroupSession && (
         <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>
           {event.bookedStudentIds.length}/{event.capacity} learners booked
+        </div>
+      )}
+
+      {isGroupSession && event.pricePerLearner !== undefined && (
+        <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>
+          Price: R{event.pricePerLearner} per learner
         </div>
       )}
 
@@ -174,6 +187,32 @@ export default function TimetableEventCard({
             }}
           >
             Decline
+          </button>
+        </div>
+      )}
+
+      {canTutorRemoveGroupClass && (
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            marginTop: 12,
+          }}
+        >
+          <button
+            onClick={() => onRemoveAdvertisedSession(event.id)}
+            style={{
+              background: "transparent",
+              color: "#F87171",
+              border: "1px solid #F87171",
+              borderRadius: 10,
+              padding: "8px 10px",
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            Remove class
           </button>
         </div>
       )}
