@@ -93,7 +93,7 @@ function App() {
               onClick={() => setPage("discover")}
             />
             <NavButton
-              label="Sessions"
+              label="Timetable"
               active={page === "sessions"}
               onClick={() => setPage("sessions")}
             />
