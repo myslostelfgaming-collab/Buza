@@ -3,7 +3,7 @@ import Pill from "../components/Pill";
 import { tutors } from "../data/mockTutors";
 import { C } from "../data/theme";
 
-export default function DiscoverPage({ setPage }) {
+export default function DiscoverPage({ onViewTutor }) {
   return (
     <section>
       <h1 style={{ color: C.white, marginTop: 0 }}>Discover Tutors</h1>
@@ -60,7 +60,7 @@ export default function DiscoverPage({ setPage }) {
             </div>
 
             <button
-              onClick={() => setPage("profile")}
+              onClick={() => onViewTutor(tutor.id)}
               style={{
                 width: "100%",
                 marginTop: 14,

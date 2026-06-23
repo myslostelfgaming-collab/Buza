@@ -9,11 +9,22 @@ import { C } from "./data/theme";
 
 function App() {
   const [page, setPage] = useState("home");
+  const [selectedTutorId, setSelectedTutorId] = useState(1);
+
+  const viewTutor = (tutorId) => {
+    setSelectedTutorId(tutorId);
+    setPage("profile");
+  };
 
   const pages = {
     home: <HomePage setPage={setPage} />,
-    discover: <DiscoverPage setPage={setPage} />,
-    profile: <TutorProfilePage setPage={setPage} />,
+    discover: <DiscoverPage onViewTutor={viewTutor} />,
+    profile: (
+      <TutorProfilePage
+        tutorId={selectedTutorId}
+        setPage={setPage}
+      />
+    ),
     booking: <BookingPage />,
     sessions: <SessionsPage />,
   };

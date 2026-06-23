@@ -3,11 +3,27 @@ import Pill from "../components/Pill";
 import { tutors } from "../data/mockTutors";
 import { C } from "../data/theme";
 
-export default function TutorProfilePage({ setPage }) {
-  const tutor = tutors[0];
+export default function TutorProfilePage({ tutorId, setPage }) {
+  const tutor = tutors.find((item) => item.id === tutorId) ?? tutors[0];
 
   return (
     <section>
+      <button
+        onClick={() => setPage("discover")}
+        style={{
+          background: "transparent",
+          border: `1px solid ${C.border}`,
+          color: C.muted,
+          borderRadius: 10,
+          padding: "8px 12px",
+          fontWeight: 700,
+          cursor: "pointer",
+          marginBottom: 16,
+        }}
+      >
+        ← Back to tutors
+      </button>
+
       <h1 style={{ color: C.white, marginTop: 0 }}>Tutor Profile</h1>
 
       <div
@@ -40,6 +56,24 @@ export default function TutorProfilePage({ setPage }) {
           ))}
           <Pill color={C.green}>Verified</Pill>
           <Pill color={C.blue}>Online</Pill>
+        </div>
+
+        <div
+          style={{
+            marginTop: 22,
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 14,
+            padding: 16,
+          }}
+        >
+          <div style={{ color: C.white, fontWeight: 900, marginBottom: 6 }}>
+            Session options coming soon
+          </div>
+          <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.6 }}>
+            Tutors will be able to create different session types, durations,
+            formats, and prices. For now, this profile is using mock tutor data.
+          </div>
         </div>
 
         <button
