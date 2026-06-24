@@ -88,6 +88,25 @@ function getPopoverPosition(anchorRect) {
   };
 }
 
+function getDateRangeError(startTime, endTime) {
+  if (!startTime || !endTime) {
+    return "Please enter both a start time and an end time.";
+  }
+
+  const startDate = new Date(startTime);
+  const endDate = new Date(endTime);
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return "Please enter valid start and end times.";
+  }
+
+  if (endDate <= startDate) {
+    return "The end time must be after the start time.";
+  }
+
+  return "";
+}
+
 function ActionButton({ children, onClick, variant = "default", type = "button" }) {
   const isDanger = variant === "danger";
   const isSuccess = variant === "success";
@@ -132,6 +151,29 @@ function FieldLabel({ children }) {
   );
 }
 
+function ValidationError({ message }) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <div
+      style={{
+        background: "rgba(248, 113, 113, 0.08)",
+        border: "1px solid rgba(248, 113, 113, 0.35)",
+        color: "#fecaca",
+        borderRadius: 12,
+        padding: 10,
+        fontSize: 13,
+        lineHeight: 1.45,
+        fontWeight: 800,
+      }}
+    >
+      {message}
+    </div>
+  );
+}
+
 export default function EventDetailPopover({
   event,
   anchorRect,
@@ -148,6 +190,7 @@ export default function EventDetailPopover({
   const [editMode, setEditMode] = useState(null);
   const [editValues, setEditValues] = useState({});
   const [deleteMode, setDeleteMode] = useState(null);
+  const [formError, setFormError] = useState("");
 
   const tutor = getTutor(event.tutorId);
   const sessionType = getSessionType(tutor, event.sessionTypeId);
@@ -199,6 +242,7 @@ export default function EventDetailPopover({
   };
 
   const updateEditValue = (field, value) => {
+    setFormError("");
     setEditValues((currentValues) => ({
       ...currentValues,
       [field]: value,
@@ -207,6 +251,7 @@ export default function EventDetailPopover({
 
   const startEditingGroupClass = () => {
     setDeleteMode(null);
+    setFormError("");
     setEditMode("group");
     setEditValues({
       title: event.title ?? "Group class",
@@ -220,6 +265,7 @@ export default function EventDetailPopover({
 
   const startEditingAvailability = () => {
     setDeleteMode(null);
+    setFormError("");
     setEditMode("availability");
     setEditValues({
       startTime: toDateTimeInputValue(event.startTime),
@@ -229,6 +275,7 @@ export default function EventDetailPopover({
 
   const startEditingBlockedTime = () => {
     setDeleteMode(null);
+    setFormError("");
     setEditMode("blocked");
     setEditValues({
       startTime: toDateTimeInputValue(event.startTime),
@@ -240,33 +287,68 @@ export default function EventDetailPopover({
   const cancelEditing = () => {
     setEditMode(null);
     setEditValues({});
+    setFormError("");
   };
 
   const saveGroupClass = () => {
+    const title = editValues.title.trim();
+
+    if (!title) {
+      setFormError("Please enter a title for the group class.");
+      return;
+    }
+
+    const dateError = getDateRangeError(editValues.startTime, editValues.endTime);
+
+    if (dateError) {
+      setFormError(dateError);
+      return;
+    }
+
     const bookedCount = getBookedCount(event);
     const capacityNumber = Number(editValues.capacity);
-    const safeCapacity = Number.isFinite(capacityNumber)
-      ? Math.max(1, bookedCount, capacityNumber)
-      : event.capacity;
 
-    const priceNumber = Number(editValues.pricePerLearner);
+    if (!Number.isFinite(capacityNumber) || capacityNumber < 1) {
+      setFormError("Capacity must be at least 1 learner.");
+      return;
+    }
+
+    if (capacityNumber < bookedCount) {
+      setFormError(
+        `Capacity cannot be lower than the ${bookedCount} learner${
+          bookedCount === 1 ? "" : "s"
+        } already booked.`
+      );
+      return;
+    }
+
     const hasPrice = editValues.pricePerLearner.trim() !== "";
+    const priceNumber = Number(editValues.pricePerLearner);
+
+    if (hasPrice && (!Number.isFinite(priceNumber) || priceNumber < 0)) {
+      setFormError("Price must be a valid amount of R0 or more.");
+      return;
+    }
 
     closeAfter(() =>
       onUpdateAdvertisedSession(event.id, {
-        title: editValues.title.trim() || "Group class",
+        title,
         startTime: editValues.startTime,
         endTime: editValues.endTime,
-        capacity: safeCapacity,
-        pricePerLearner:
-          hasPrice && Number.isFinite(priceNumber)
-            ? priceNumber
-            : event.pricePerLearner,
+        capacity: capacityNumber,
+        pricePerLearner: hasPrice ? priceNumber : event.pricePerLearner,
       })
     );
   };
 
   const saveAvailability = () => {
+    const dateError = getDateRangeError(editValues.startTime, editValues.endTime);
+
+    if (dateError) {
+      setFormError(dateError);
+      return;
+    }
+
     closeAfter(() =>
       onUpdateAvailabilityWindow(event.id, {
         startTime: editValues.startTime,
@@ -276,7 +358,19 @@ export default function EventDetailPopover({
   };
 
   const saveBlockedTime = () => {
-    const cleanedReason = editValues.reason.trim() || "Unavailable";
+    const cleanedReason = editValues.reason.trim();
+
+    if (!cleanedReason) {
+      setFormError("Please enter a reason or label for the blocked time.");
+      return;
+    }
+
+    const dateError = getDateRangeError(editValues.startTime, editValues.endTime);
+
+    if (dateError) {
+      setFormError(dateError);
+      return;
+    }
 
     closeAfter(() =>
       onUpdateBlockedTime(event.id, {
@@ -290,16 +384,19 @@ export default function EventDetailPopover({
 
   const deleteGroupClass = () => {
     setEditMode(null);
+    setFormError("");
     setDeleteMode("group");
   };
 
   const deleteAvailabilityWindow = () => {
     setEditMode(null);
+    setFormError("");
     setDeleteMode("availability");
   };
 
   const deleteBlockedTime = () => {
     setEditMode(null);
+    setFormError("");
     setDeleteMode("blocked");
   };
 
@@ -671,6 +768,8 @@ export default function EventDetailPopover({
               paddingTop: 12,
             }}
           >
+            <ValidationError message={formError} />
+
             {editMode === "group" && (
               <>
                 <FieldLabel>
@@ -681,6 +780,7 @@ export default function EventDetailPopover({
                       updateEditValue("title", event.target.value)
                     }
                     style={inputStyle}
+                    required
                   />
                 </FieldLabel>
 
@@ -727,6 +827,7 @@ export default function EventDetailPopover({
                         updateEditValue("capacity", event.target.value)
                       }
                       style={inputStyle}
+                      required
                     />
                   </FieldLabel>
 
@@ -786,6 +887,7 @@ export default function EventDetailPopover({
                       updateEditValue("reason", event.target.value)
                     }
                     style={inputStyle}
+                    required
                   />
                 </FieldLabel>
 
