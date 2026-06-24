@@ -39,6 +39,7 @@ export default function SessionsPage({
   onUpdateBlockedTime,
   onRemoveBlockedTime,
   onAddAdvertisedSession,
+  onUpdateAdvertisedSession,
   onRemoveAdvertisedSession,
 }) {
   const [calendarView, setCalendarView] = useState("week");
@@ -82,13 +83,22 @@ export default function SessionsPage({
   );
 
   const allAdvertisedSessions = useMemo(
-    () =>
-      applyAdvertisedSessionBookingOverrides(
-        [...advertisedSessions, ...extraAdvertisedSessions],
-        advertisedSessionBookingOverrides
-      ),
-    [extraAdvertisedSessions, advertisedSessionBookingOverrides]
-  );
+  () =>
+    applyAdvertisedSessionBookingOverrides(
+      [
+        ...advertisedSessions.map((session) => ({
+          ...session,
+          isUserCreated: false,
+        })),
+        ...extraAdvertisedSessions.map((session) => ({
+          ...session,
+          isUserCreated: true,
+        })),
+      ],
+      advertisedSessionBookingOverrides
+    ),
+  [extraAdvertisedSessions, advertisedSessionBookingOverrides]
+);
 
   const visibleEvents = useMemo(() => {
     if (currentUser.role === "student") {
@@ -270,6 +280,7 @@ export default function SessionsPage({
             onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
             onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
             onUpdateBlockedTime={onUpdateBlockedTime}
+            onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveBlockedTime={onRemoveBlockedTime}
           />
         )}
@@ -285,6 +296,7 @@ export default function SessionsPage({
             onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
             onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
             onUpdateBlockedTime={onUpdateBlockedTime}
+            onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveBlockedTime={onRemoveBlockedTime}
           />
         )}
@@ -304,6 +316,7 @@ export default function SessionsPage({
             onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
             onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
             onUpdateBlockedTime={onUpdateBlockedTime}
+            onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveBlockedTime={onRemoveBlockedTime}
           />
         )}

@@ -112,6 +112,7 @@ export default function EventDetailPopover({
   currentUser,
   onClose,
   onUpdateBookingStatus,
+  onUpdateAdvertisedSession,
   onRemoveAdvertisedSession,
   onUpdateAvailabilityWindow,
   onRemoveAvailabilityWindow,
@@ -133,10 +134,11 @@ export default function EventDetailPopover({
     event.status === "pending" &&
     typeof onUpdateBookingStatus === "function";
 
-  const canTutorRemoveGroupClass =
+  const canTutorManageGroupClass =
     currentUser.role === "tutor" &&
     isGroupSession &&
     event.isUserCreated &&
+    typeof onUpdateAdvertisedSession === "function" &&
     typeof onRemoveAdvertisedSession === "function";
 
   const canTutorManageAvailability =
@@ -155,7 +157,7 @@ export default function EventDetailPopover({
 
   const hasActions =
     canTutorManageBooking ||
-    canTutorRemoveGroupClass ||
+    canTutorManageGroupClass ||
     canTutorManageAvailability ||
     canTutorManageBlockedTime;
 
@@ -164,6 +166,68 @@ export default function EventDetailPopover({
   const closeAfter = (action) => {
     action();
     onClose();
+  };
+
+  const editGroupClass = () => {
+    const title = window.prompt("Edit group class title:", event.title);
+
+    if (title === null) {
+      return;
+    }
+
+    const startTime = window.prompt("Edit group class start time:", event.startTime);
+
+    if (startTime === null) {
+      return;
+    }
+
+    const endTime = window.prompt("Edit group class end time:", event.endTime);
+
+    if (endTime === null) {
+      return;
+    }
+
+    const capacity = window.prompt("Edit learner capacity:", event.capacity);
+
+    if (capacity === null) {
+      return;
+    }
+
+    const pricePerLearner = window.prompt(
+      "Edit price per learner:",
+      event.pricePerLearner ?? ""
+    );
+
+    if (pricePerLearner === null) {
+      return;
+    }
+
+    closeAfter(() =>
+      onUpdateAdvertisedSession(event.id, {
+        title: title.trim() || "Group class",
+        startTime: startTime.trim(),
+        endTime: endTime.trim(),
+        capacity: Number(capacity) || event.capacity,
+        pricePerLearner:
+          pricePerLearner.trim() === ""
+            ? event.pricePerLearner
+            : Number(pricePerLearner),
+      })
+    );
+  };
+
+  const deleteGroupClass = () => {
+    const confirmed = window.confirm(
+      `Remove this group class?\n\n${event.title}\n${formatDateTime(
+        event.startTime
+      )} – ${formatDateTime(event.endTime)}`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    closeAfter(() => onRemoveAdvertisedSession(event.id));
   };
 
   const editAvailabilityWindow = () => {
@@ -461,15 +525,13 @@ export default function EventDetailPopover({
               </>
             )}
 
-            {canTutorRemoveGroupClass && (
-              <ActionButton
-                variant="danger"
-                onClick={() =>
-                  closeAfter(() => onRemoveAdvertisedSession(event.id))
-                }
-              >
-                Remove class
-              </ActionButton>
+            {canTutorManageGroupClass && (
+              <>
+                <ActionButton onClick={editGroupClass}>Edit class</ActionButton>
+                <ActionButton variant="danger" onClick={deleteGroupClass}>
+                  Remove class
+                </ActionButton>
+              </>
             )}
 
             {canTutorManageAvailability && (

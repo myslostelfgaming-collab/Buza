@@ -49,11 +49,12 @@ export default function DayCalendar({
   visibleEvents,
   currentUser,
   onUpdateBookingStatus,
+  onUpdateAdvertisedSession,
   onRemoveAdvertisedSession,
   onUpdateAvailabilityWindow,
   onRemoveAvailabilityWindow,
   onUpdateBlockedTime,
-  onRemoveBlockedTime,
+  onRemoveBlockedTime,  
 }) {
   const selectedDay = {
     label: getDayLabel(selectedDate),
@@ -150,16 +151,17 @@ export default function DayCalendar({
       </div>
 
       <WeekCalendar
-        weekDays={[selectedDay]}
-        visibleEvents={dayEvents}
-        currentUser={currentUser}
-        onUpdateBookingStatus={onUpdateBookingStatus}
-        onRemoveAdvertisedSession={onRemoveAdvertisedSession}
-        onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
-        onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
-        onUpdateBlockedTime={onUpdateBlockedTime}
-        onRemoveBlockedTime={onRemoveBlockedTime}
-      />
+  weekDays={[selectedDay]}
+  visibleEvents={dayEvents}
+  currentUser={currentUser}
+  onUpdateBookingStatus={onUpdateBookingStatus}
+  onUpdateAdvertisedSession={onUpdateAdvertisedSession}
+  onRemoveAdvertisedSession={onRemoveAdvertisedSession}
+  onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
+  onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
+  onUpdateBlockedTime={onUpdateBlockedTime}
+  onRemoveBlockedTime={onRemoveBlockedTime}
+/>
     </div>
   );
 }

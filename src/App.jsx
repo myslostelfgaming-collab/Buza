@@ -274,7 +274,15 @@ function App() {
       ],
     }));
   };
-
+  const updateAdvertisedSession = (sessionId, updatedFields) => {
+    setDemoState((currentState) => ({
+      ...currentState,
+      extraAdvertisedSessions: currentState.extraAdvertisedSessions.map(
+        (session) =>
+          session.id === sessionId ? { ...session, ...updatedFields } : session
+      ),
+    }));
+  };
   const removeAdvertisedSession = (sessionId) => {
     setDemoState((currentState) => ({
       ...currentState,
@@ -332,6 +340,7 @@ function App() {
         onUpdateBlockedTime={updateBlockedTime}
         onRemoveBlockedTime={removeBlockedTime}
         onAddAdvertisedSession={addAdvertisedSession}
+        onUpdateAdvertisedSession={updateAdvertisedSession}
         onRemoveAdvertisedSession={removeAdvertisedSession}
       />
     ),

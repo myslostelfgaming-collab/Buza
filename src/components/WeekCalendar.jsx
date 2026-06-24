@@ -137,6 +137,7 @@ export default function WeekCalendar({
   visibleEvents,
   currentUser,
   onUpdateBookingStatus,
+  onUpdateAdvertisedSession,
   onRemoveAdvertisedSession,
   onUpdateAvailabilityWindow,
   onRemoveAvailabilityWindow,
@@ -445,6 +446,7 @@ export default function WeekCalendar({
           currentUser={currentUser}
           onClose={() => setSelectedEventInfo(null)}
           onUpdateBookingStatus={onUpdateBookingStatus}
+          onUpdateAdvertisedSession={onUpdateAdvertisedSession}
           onRemoveAdvertisedSession={onRemoveAdvertisedSession}
           onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
           onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
