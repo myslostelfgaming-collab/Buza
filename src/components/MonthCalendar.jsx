@@ -118,6 +118,10 @@ export default function MonthCalendar({
   currentUser,
   onUpdateBookingStatus,
   onRemoveAdvertisedSession,
+  onUpdateAvailabilityWindow,
+  onRemoveAvailabilityWindow,
+  onUpdateBlockedTime,
+  onRemoveBlockedTime,
 }) {
   const [selectedEventInfo, setSelectedEventInfo] = useState(null);
 
@@ -157,6 +161,7 @@ export default function MonthCalendar({
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button
+            type="button"
             onClick={goToPreviousMonth}
             style={{
               background: C.card,
@@ -172,6 +177,7 @@ export default function MonthCalendar({
           </button>
 
           <button
+            type="button"
             onClick={goToNextMonth}
             style={{
               background: C.card,
@@ -235,7 +241,10 @@ export default function MonthCalendar({
           );
 
           const visibleDayEvents = dayEvents.slice(0, 3);
-          const hiddenEventCount = Math.max(0, dayEvents.length - visibleDayEvents.length);
+          const hiddenEventCount = Math.max(
+            0,
+            dayEvents.length - visibleDayEvents.length
+          );
           const isSelectedDate = day.date === selectedDate;
 
           return (
@@ -376,6 +385,10 @@ export default function MonthCalendar({
           onClose={() => setSelectedEventInfo(null)}
           onUpdateBookingStatus={onUpdateBookingStatus}
           onRemoveAdvertisedSession={onRemoveAdvertisedSession}
+          onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
+          onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
+          onUpdateBlockedTime={onUpdateBlockedTime}
+          onRemoveBlockedTime={onRemoveBlockedTime}
         />
       )}
     </div>

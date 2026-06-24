@@ -46,6 +46,28 @@ function saveDemoState(demoState) {
   }
 }
 
+function DemoResetButton({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Clear all locally saved demo-created data"
+      style={{
+        border: "1px solid rgba(248, 113, 113, 0.45)",
+        background: "rgba(248, 113, 113, 0.08)",
+        color: "#fecaca",
+        borderRadius: 999,
+        padding: "7px 11px",
+        fontWeight: 850,
+        fontSize: 12,
+        cursor: "pointer",
+      }}
+    >
+      Reset demo data
+    </button>
+  );
+}
+
 function App() {
   const [page, setPage] = useState("home");
   const [selectedTutorId, setSelectedTutorId] = useState(null);
@@ -79,6 +101,14 @@ function App() {
   };
 
   const resetDemoData = () => {
+    const confirmed = window.confirm(
+      "Reset all demo-created bookings, availability, blocked times, and group classes?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     localStorage.removeItem(BUZA_STORAGE_KEY);
     setDemoState(initialDemoState);
   };
@@ -187,10 +217,51 @@ function App() {
     }));
   };
 
+  const updateAvailabilityWindow = (availabilityWindowId, updatedFields) => {
+    setDemoState((currentState) => ({
+      ...currentState,
+      extraAvailabilityWindows: currentState.extraAvailabilityWindows.map(
+        (availabilityWindow) =>
+          availabilityWindow.id === availabilityWindowId
+            ? { ...availabilityWindow, ...updatedFields }
+            : availabilityWindow
+      ),
+    }));
+  };
+
+  const removeAvailabilityWindow = (availabilityWindowId) => {
+    setDemoState((currentState) => ({
+      ...currentState,
+      extraAvailabilityWindows: currentState.extraAvailabilityWindows.filter(
+        (availabilityWindow) => availabilityWindow.id !== availabilityWindowId
+      ),
+    }));
+  };
+
   const addBlockedTime = (blockedTime) => {
     setDemoState((currentState) => ({
       ...currentState,
       extraBlockedTimes: [blockedTime, ...currentState.extraBlockedTimes],
+    }));
+  };
+
+  const updateBlockedTime = (blockedTimeId, updatedFields) => {
+    setDemoState((currentState) => ({
+      ...currentState,
+      extraBlockedTimes: currentState.extraBlockedTimes.map((blockedTime) =>
+        blockedTime.id === blockedTimeId
+          ? { ...blockedTime, ...updatedFields }
+          : blockedTime
+      ),
+    }));
+  };
+
+  const removeBlockedTime = (blockedTimeId) => {
+    setDemoState((currentState) => ({
+      ...currentState,
+      extraBlockedTimes: currentState.extraBlockedTimes.filter(
+        (blockedTime) => blockedTime.id !== blockedTimeId
+      ),
     }));
   };
 
@@ -255,7 +326,11 @@ function App() {
         bookingStatusOverrides={bookingStatusOverrides}
         onUpdateBookingStatus={updateBookingStatus}
         onAddAvailabilityWindow={addAvailabilityWindow}
+        onUpdateAvailabilityWindow={updateAvailabilityWindow}
+        onRemoveAvailabilityWindow={removeAvailabilityWindow}
         onAddBlockedTime={addBlockedTime}
+        onUpdateBlockedTime={updateBlockedTime}
+        onRemoveBlockedTime={removeBlockedTime}
         onAddAdvertisedSession={addAdvertisedSession}
         onRemoveAdvertisedSession={removeAdvertisedSession}
       />
@@ -331,12 +406,9 @@ function App() {
                 active={page === "booking"}
                 onClick={() => startBooking(null)}
               />
-              <NavButton
-                label="Reset demo data"
-                active={false}
-                onClick={resetDemoData}
-              />
             </div>
+
+            <DemoResetButton onClick={resetDemoData} />
           </div>
         </header>
 

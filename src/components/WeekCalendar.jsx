@@ -138,6 +138,10 @@ export default function WeekCalendar({
   currentUser,
   onUpdateBookingStatus,
   onRemoveAdvertisedSession,
+  onUpdateAvailabilityWindow,
+  onRemoveAvailabilityWindow,
+  onUpdateBlockedTime,
+  onRemoveBlockedTime,
 }) {
   const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
   const [endTime, setEndTime] = useState(DEFAULT_END_TIME);
@@ -420,26 +424,34 @@ export default function WeekCalendar({
                     event={event}
                     currentUser={currentUser}
                     compact={zoom === "compact"}
-                    onSelectEvent={(event, anchorRect) =>
-                     setSelectedEventInfo({ event, anchorRect })
-                     }
+                    onSelectEvent={(selectedEvent, anchorRect) =>
+                      setSelectedEventInfo({
+                        event: selectedEvent,
+                        anchorRect,
+                      })
+                    }
                   />
-                  {selectedEventInfo && (
-                    <EventDetailPopover
-                    event={selectedEventInfo.event}
-                    anchorRect={selectedEventInfo.anchorRect}
-                    currentUser={currentUser}
-                    onClose={() => setSelectedEventInfo(null)}
-                    onUpdateBookingStatus={onUpdateBookingStatus}
-                    onRemoveAdvertisedSession={onRemoveAdvertisedSession}
-                    />
-                  )}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {selectedEventInfo && (
+        <EventDetailPopover
+          event={selectedEventInfo.event}
+          anchorRect={selectedEventInfo.anchorRect}
+          currentUser={currentUser}
+          onClose={() => setSelectedEventInfo(null)}
+          onUpdateBookingStatus={onUpdateBookingStatus}
+          onRemoveAdvertisedSession={onRemoveAdvertisedSession}
+          onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
+          onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
+          onUpdateBlockedTime={onUpdateBlockedTime}
+          onRemoveBlockedTime={onRemoveBlockedTime}
+        />
+      )}
     </div>
   );
 }

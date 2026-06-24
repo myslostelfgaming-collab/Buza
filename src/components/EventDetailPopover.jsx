@@ -79,6 +79,33 @@ function getPopoverPosition(anchorRect) {
   };
 }
 
+function ActionButton({ children, onClick, variant = "default" }) {
+  const isDanger = variant === "danger";
+  const isSuccess = variant === "success";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        background: isSuccess ? C.green : "transparent",
+        color: isSuccess ? "#000" : isDanger ? "#F87171" : C.text,
+        border: isSuccess
+          ? "none"
+          : isDanger
+          ? "1px solid #F87171"
+          : `1px solid ${C.border}`,
+        borderRadius: 10,
+        padding: "8px 11px",
+        fontWeight: 900,
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function EventDetailPopover({
   event,
   anchorRect,
@@ -86,6 +113,10 @@ export default function EventDetailPopover({
   onClose,
   onUpdateBookingStatus,
   onRemoveAdvertisedSession,
+  onUpdateAvailabilityWindow,
+  onRemoveAvailabilityWindow,
+  onUpdateBlockedTime,
+  onRemoveBlockedTime,
 }) {
   const tutor = getTutor(event.tutorId);
   const sessionType = getSessionType(tutor, event.sessionTypeId);
@@ -108,11 +139,114 @@ export default function EventDetailPopover({
     event.isUserCreated &&
     typeof onRemoveAdvertisedSession === "function";
 
+  const canTutorManageAvailability =
+    currentUser.role === "tutor" &&
+    isAvailability &&
+    event.isUserCreated &&
+    typeof onUpdateAvailabilityWindow === "function" &&
+    typeof onRemoveAvailabilityWindow === "function";
+
+  const canTutorManageBlockedTime =
+    currentUser.role === "tutor" &&
+    isBlocked &&
+    event.isUserCreated &&
+    typeof onUpdateBlockedTime === "function" &&
+    typeof onRemoveBlockedTime === "function";
+
+  const hasActions =
+    canTutorManageBooking ||
+    canTutorRemoveGroupClass ||
+    canTutorManageAvailability ||
+    canTutorManageBlockedTime;
+
   const position = getPopoverPosition(anchorRect);
 
   const closeAfter = (action) => {
     action();
     onClose();
+  };
+
+  const editAvailabilityWindow = () => {
+    const startTime = window.prompt("Edit availability start time:", event.startTime);
+
+    if (startTime === null) {
+      return;
+    }
+
+    const endTime = window.prompt("Edit availability end time:", event.endTime);
+
+    if (endTime === null) {
+      return;
+    }
+
+    closeAfter(() =>
+      onUpdateAvailabilityWindow(event.id, {
+        startTime: startTime.trim(),
+        endTime: endTime.trim(),
+      })
+    );
+  };
+
+  const deleteAvailabilityWindow = () => {
+    const confirmed = window.confirm(
+      `Delete this availability window?\n\n${formatDateTime(
+        event.startTime
+      )} – ${formatDateTime(event.endTime)}`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    closeAfter(() => onRemoveAvailabilityWindow(event.id));
+  };
+
+  const editBlockedTime = () => {
+    const startTime = window.prompt("Edit blocked time start:", event.startTime);
+
+    if (startTime === null) {
+      return;
+    }
+
+    const endTime = window.prompt("Edit blocked time end:", event.endTime);
+
+    if (endTime === null) {
+      return;
+    }
+
+    const reason = window.prompt(
+      "Edit blocked time reason:",
+      event.reason ?? event.title ?? "Unavailable"
+    );
+
+    if (reason === null) {
+      return;
+    }
+
+    const cleanedReason = reason.trim() || "Unavailable";
+
+    closeAfter(() =>
+      onUpdateBlockedTime(event.id, {
+        startTime: startTime.trim(),
+        endTime: endTime.trim(),
+        title: cleanedReason,
+        reason: cleanedReason,
+      })
+    );
+  };
+
+  const deleteBlockedTime = () => {
+    const confirmed = window.confirm(
+      `Delete this blocked time?\n\n${formatDateTime(
+        event.startTime
+      )} – ${formatDateTime(event.endTime)}`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    closeAfter(() => onRemoveBlockedTime(event.id));
   };
 
   return (
@@ -198,6 +332,7 @@ export default function EventDetailPopover({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
             style={{
               background: C.surface,
@@ -293,7 +428,7 @@ export default function EventDetailPopover({
           )}
         </div>
 
-        {(canTutorManageBooking || canTutorRemoveGroupClass) && (
+        {hasActions && (
           <div
             style={{
               display: "flex",
@@ -306,59 +441,53 @@ export default function EventDetailPopover({
           >
             {canTutorManageBooking && (
               <>
-                <button
+                <ActionButton
+                  variant="success"
                   onClick={() =>
                     closeAfter(() => onUpdateBookingStatus(event.id, "confirmed"))
                   }
-                  style={{
-                    background: C.green,
-                    color: "#000",
-                    border: "none",
-                    borderRadius: 10,
-                    padding: "8px 11px",
-                    fontWeight: 900,
-                    cursor: "pointer",
-                  }}
                 >
                   Accept
-                </button>
+                </ActionButton>
 
-                <button
+                <ActionButton
+                  variant="danger"
                   onClick={() =>
                     closeAfter(() => onUpdateBookingStatus(event.id, "declined"))
                   }
-                  style={{
-                    background: "transparent",
-                    color: "#F87171",
-                    border: "1px solid #F87171",
-                    borderRadius: 10,
-                    padding: "8px 11px",
-                    fontWeight: 900,
-                    cursor: "pointer",
-                  }}
                 >
                   Decline
-                </button>
+                </ActionButton>
               </>
             )}
 
             {canTutorRemoveGroupClass && (
-              <button
+              <ActionButton
+                variant="danger"
                 onClick={() =>
                   closeAfter(() => onRemoveAdvertisedSession(event.id))
                 }
-                style={{
-                  background: "transparent",
-                  color: "#F87171",
-                  border: "1px solid #F87171",
-                  borderRadius: 10,
-                  padding: "8px 11px",
-                  fontWeight: 900,
-                  cursor: "pointer",
-                }}
               >
                 Remove class
-              </button>
+              </ActionButton>
+            )}
+
+            {canTutorManageAvailability && (
+              <>
+                <ActionButton onClick={editAvailabilityWindow}>Edit</ActionButton>
+                <ActionButton variant="danger" onClick={deleteAvailabilityWindow}>
+                  Delete
+                </ActionButton>
+              </>
+            )}
+
+            {canTutorManageBlockedTime && (
+              <>
+                <ActionButton onClick={editBlockedTime}>Edit</ActionButton>
+                <ActionButton variant="danger" onClick={deleteBlockedTime}>
+                  Delete
+                </ActionButton>
+              </>
             )}
           </div>
         )}

@@ -50,6 +50,10 @@ export default function DayCalendar({
   currentUser,
   onUpdateBookingStatus,
   onRemoveAdvertisedSession,
+  onUpdateAvailabilityWindow,
+  onRemoveAvailabilityWindow,
+  onUpdateBlockedTime,
+  onRemoveBlockedTime,
 }) {
   const selectedDay = {
     label: getDayLabel(selectedDate),
@@ -101,6 +105,7 @@ export default function DayCalendar({
         </div>
 
         <button
+          type="button"
           onClick={() => onSelectedDateChange(addDays(selectedDate, -1))}
           style={{
             background: C.card,
@@ -116,6 +121,7 @@ export default function DayCalendar({
         </button>
 
         <button
+          type="button"
           onClick={() => onSelectedDateChange(addDays(selectedDate, 1))}
           style={{
             background: C.card,
@@ -149,6 +155,10 @@ export default function DayCalendar({
         currentUser={currentUser}
         onUpdateBookingStatus={onUpdateBookingStatus}
         onRemoveAdvertisedSession={onRemoveAdvertisedSession}
+        onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
+        onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
+        onUpdateBlockedTime={onUpdateBlockedTime}
+        onRemoveBlockedTime={onRemoveBlockedTime}
       />
     </div>
   );
