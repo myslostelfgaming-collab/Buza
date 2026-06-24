@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { tutors } from "../data/mockTutors";
 import { users } from "../data/mockUsers";
-import { C } from "../data/theme";
+import { C, inputStyle } from "../data/theme";
 
 function getTutor(tutorId) {
   return tutors.find((tutor) => tutor.id === tutorId) ?? null;
@@ -22,6 +23,14 @@ function formatDateTime(dateTime) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function toDateTimeInputValue(dateTime) {
+  if (typeof dateTime !== "string") {
+    return "";
+  }
+
+  return dateTime.slice(0, 16);
 }
 
 function statusColor(status) {
@@ -47,7 +56,7 @@ function getBookedCount(event) {
 }
 
 function getPopoverPosition(anchorRect) {
-  const width = 360;
+  const width = 380;
   const margin = 12;
 
   if (!anchorRect) {
@@ -61,8 +70,8 @@ function getPopoverPosition(anchorRect) {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
-  const wouldOverflowBottom = anchorRect.bottom + 360 > viewportHeight;
-  const hasSpaceAbove = anchorRect.top > 360;
+  const wouldOverflowBottom = anchorRect.bottom + 420 > viewportHeight;
+  const hasSpaceAbove = anchorRect.top > 420;
   const opensAbove = wouldOverflowBottom && hasSpaceAbove;
 
   const left = Math.min(
@@ -79,16 +88,17 @@ function getPopoverPosition(anchorRect) {
   };
 }
 
-function ActionButton({ children, onClick, variant = "default" }) {
+function ActionButton({ children, onClick, variant = "default", type = "button" }) {
   const isDanger = variant === "danger";
   const isSuccess = variant === "success";
+  const isMuted = variant === "muted";
 
   return (
     <button
-      type="button"
+      type={type}
       onClick={onClick}
       style={{
-        background: isSuccess ? C.green : "transparent",
+        background: isSuccess ? C.green : isMuted ? C.surface : "transparent",
         color: isSuccess ? "#000" : isDanger ? "#F87171" : C.text,
         border: isSuccess
           ? "none"
@@ -106,6 +116,22 @@ function ActionButton({ children, onClick, variant = "default" }) {
   );
 }
 
+function FieldLabel({ children }) {
+  return (
+    <label
+      style={{
+        display: "grid",
+        gap: 5,
+        color: C.white,
+        fontWeight: 900,
+        fontSize: 12,
+      }}
+    >
+      {children}
+    </label>
+  );
+}
+
 export default function EventDetailPopover({
   event,
   anchorRect,
@@ -119,6 +145,10 @@ export default function EventDetailPopover({
   onUpdateBlockedTime,
   onRemoveBlockedTime,
 }) {
+  const [editMode, setEditMode] = useState(null);
+  const [editValues, setEditValues] = useState({});
+  const [deleteMode, setDeleteMode] = useState(null);
+
   const tutor = getTutor(event.tutorId);
   const sessionType = getSessionType(tutor, event.sessionTypeId);
   const student = event.studentId ? getUser(event.studentId) : null;
@@ -168,150 +198,131 @@ export default function EventDetailPopover({
     onClose();
   };
 
-  const editGroupClass = () => {
-    const title = window.prompt("Edit group class title:", event.title);
+  const updateEditValue = (field, value) => {
+    setEditValues((currentValues) => ({
+      ...currentValues,
+      [field]: value,
+    }));
+  };
 
-    if (title === null) {
-      return;
-    }
+  const startEditingGroupClass = () => {
+    setDeleteMode(null);
+    setEditMode("group");
+    setEditValues({
+      title: event.title ?? "Group class",
+      startTime: toDateTimeInputValue(event.startTime),
+      endTime: toDateTimeInputValue(event.endTime),
+      capacity: String(event.capacity ?? 1),
+      pricePerLearner:
+        event.pricePerLearner === undefined ? "" : String(event.pricePerLearner),
+    });
+  };
 
-    const startTime = window.prompt("Edit group class start time:", event.startTime);
+  const startEditingAvailability = () => {
+    setDeleteMode(null);
+    setEditMode("availability");
+    setEditValues({
+      startTime: toDateTimeInputValue(event.startTime),
+      endTime: toDateTimeInputValue(event.endTime),
+    });
+  };
 
-    if (startTime === null) {
-      return;
-    }
+  const startEditingBlockedTime = () => {
+    setDeleteMode(null);
+    setEditMode("blocked");
+    setEditValues({
+      startTime: toDateTimeInputValue(event.startTime),
+      endTime: toDateTimeInputValue(event.endTime),
+      reason: event.reason ?? event.title ?? "Unavailable",
+    });
+  };
 
-    const endTime = window.prompt("Edit group class end time:", event.endTime);
+  const cancelEditing = () => {
+    setEditMode(null);
+    setEditValues({});
+  };
 
-    if (endTime === null) {
-      return;
-    }
+  const saveGroupClass = () => {
+    const bookedCount = getBookedCount(event);
+    const capacityNumber = Number(editValues.capacity);
+    const safeCapacity = Number.isFinite(capacityNumber)
+      ? Math.max(1, bookedCount, capacityNumber)
+      : event.capacity;
 
-    const capacity = window.prompt("Edit learner capacity:", event.capacity);
-
-    if (capacity === null) {
-      return;
-    }
-
-    const pricePerLearner = window.prompt(
-      "Edit price per learner:",
-      event.pricePerLearner ?? ""
-    );
-
-    if (pricePerLearner === null) {
-      return;
-    }
+    const priceNumber = Number(editValues.pricePerLearner);
+    const hasPrice = editValues.pricePerLearner.trim() !== "";
 
     closeAfter(() =>
       onUpdateAdvertisedSession(event.id, {
-        title: title.trim() || "Group class",
-        startTime: startTime.trim(),
-        endTime: endTime.trim(),
-        capacity: Number(capacity) || event.capacity,
+        title: editValues.title.trim() || "Group class",
+        startTime: editValues.startTime,
+        endTime: editValues.endTime,
+        capacity: safeCapacity,
         pricePerLearner:
-          pricePerLearner.trim() === ""
-            ? event.pricePerLearner
-            : Number(pricePerLearner),
+          hasPrice && Number.isFinite(priceNumber)
+            ? priceNumber
+            : event.pricePerLearner,
       })
     );
   };
 
-  const deleteGroupClass = () => {
-    const confirmed = window.confirm(
-      `Remove this group class?\n\n${event.title}\n${formatDateTime(
-        event.startTime
-      )} – ${formatDateTime(event.endTime)}`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    closeAfter(() => onRemoveAdvertisedSession(event.id));
-  };
-
-  const editAvailabilityWindow = () => {
-    const startTime = window.prompt("Edit availability start time:", event.startTime);
-
-    if (startTime === null) {
-      return;
-    }
-
-    const endTime = window.prompt("Edit availability end time:", event.endTime);
-
-    if (endTime === null) {
-      return;
-    }
-
+  const saveAvailability = () => {
     closeAfter(() =>
       onUpdateAvailabilityWindow(event.id, {
-        startTime: startTime.trim(),
-        endTime: endTime.trim(),
+        startTime: editValues.startTime,
+        endTime: editValues.endTime,
       })
     );
   };
 
-  const deleteAvailabilityWindow = () => {
-    const confirmed = window.confirm(
-      `Delete this availability window?\n\n${formatDateTime(
-        event.startTime
-      )} – ${formatDateTime(event.endTime)}`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    closeAfter(() => onRemoveAvailabilityWindow(event.id));
-  };
-
-  const editBlockedTime = () => {
-    const startTime = window.prompt("Edit blocked time start:", event.startTime);
-
-    if (startTime === null) {
-      return;
-    }
-
-    const endTime = window.prompt("Edit blocked time end:", event.endTime);
-
-    if (endTime === null) {
-      return;
-    }
-
-    const reason = window.prompt(
-      "Edit blocked time reason:",
-      event.reason ?? event.title ?? "Unavailable"
-    );
-
-    if (reason === null) {
-      return;
-    }
-
-    const cleanedReason = reason.trim() || "Unavailable";
+  const saveBlockedTime = () => {
+    const cleanedReason = editValues.reason.trim() || "Unavailable";
 
     closeAfter(() =>
       onUpdateBlockedTime(event.id, {
-        startTime: startTime.trim(),
-        endTime: endTime.trim(),
+        startTime: editValues.startTime,
+        endTime: editValues.endTime,
         title: cleanedReason,
         reason: cleanedReason,
       })
     );
   };
 
-  const deleteBlockedTime = () => {
-    const confirmed = window.confirm(
-      `Delete this blocked time?\n\n${formatDateTime(
-        event.startTime
-      )} – ${formatDateTime(event.endTime)}`
-    );
+  const deleteGroupClass = () => {
+    setEditMode(null);
+    setDeleteMode("group");
+  };
 
-    if (!confirmed) {
-      return;
+  const deleteAvailabilityWindow = () => {
+    setEditMode(null);
+    setDeleteMode("availability");
+  };
+
+  const deleteBlockedTime = () => {
+    setEditMode(null);
+    setDeleteMode("blocked");
+  };
+
+  const cancelDeleting = () => {
+    setDeleteMode(null);
+  };
+
+  const confirmDelete = () => {
+    if (deleteMode === "group") {
+      closeAfter(() => onRemoveAdvertisedSession(event.id));
     }
 
-    closeAfter(() => onRemoveBlockedTime(event.id));
+    if (deleteMode === "availability") {
+      closeAfter(() => onRemoveAvailabilityWindow(event.id));
+    }
+
+    if (deleteMode === "blocked") {
+      closeAfter(() => onRemoveBlockedTime(event.id));
+    }
   };
+
+  const isEditing = editMode !== null;
+  const isDeleting = deleteMode !== null;
 
   return (
     <>
@@ -332,7 +343,7 @@ export default function EventDetailPopover({
           top: position.top,
           transform: position.opensAbove ? "translateY(-100%)" : "none",
           zIndex: 9999,
-          width: 360,
+          width: 380,
           maxWidth: "calc(100vw - 24px)",
           background: C.card,
           border: `1px solid ${C.border}`,
@@ -380,7 +391,7 @@ export default function EventDetailPopover({
                 marginBottom: 8,
               }}
             >
-              {event.status}
+              {isEditing ? "editing" : isDeleting ? "confirm delete" : event.status}
             </div>
 
             <h3
@@ -391,7 +402,11 @@ export default function EventDetailPopover({
                 lineHeight: 1.25,
               }}
             >
-              {getEventTitle(event, sessionType)}
+              {isEditing
+                ? "Edit timetable item"
+                : isDeleting
+                ? "Delete timetable item?"
+                : getEventTitle(event, sessionType)}
             </h3>
           </div>
 
@@ -412,146 +427,412 @@ export default function EventDetailPopover({
           </button>
         </div>
 
-        <div
-          style={{
-            marginTop: 14,
-            display: "grid",
-            gap: 8,
-            color: C.text,
-            lineHeight: 1.45,
-            fontSize: 13,
-          }}
-        >
-          <div>
-            <strong style={{ color: C.white }}>Time:</strong>{" "}
-            {formatDateTime(event.startTime)} – {formatDateTime(event.endTime)}
-          </div>
+        {!isEditing && !isDeleting && (
+          <>
+            <div
+              style={{
+                marginTop: 14,
+                display: "grid",
+                gap: 8,
+                color: C.text,
+                lineHeight: 1.45,
+                fontSize: 13,
+              }}
+            >
+              <div>
+                <strong style={{ color: C.white }}>Time:</strong>{" "}
+                {formatDateTime(event.startTime)} – {formatDateTime(event.endTime)}
+              </div>
 
-          {tutor && (
-            <div>
-              <strong style={{ color: C.white }}>Tutor:</strong> {tutor.name}
+              {tutor && (
+                <div>
+                  <strong style={{ color: C.white }}>Tutor:</strong> {tutor.name}
+                </div>
+              )}
+
+              {sessionType && (
+                <div>
+                  <strong style={{ color: C.white }}>Session:</strong>{" "}
+                  {sessionType.title} · {sessionType.durationMinutes} min · R
+                  {sessionType.price}
+                </div>
+              )}
+
+              {currentUser.role === "tutor" && isBooking && (
+                <div>
+                  <strong style={{ color: C.white }}>Student:</strong>{" "}
+                  {student?.name ?? event.learnerName ?? "Unknown student"}
+                </div>
+              )}
+
+              {currentUser.role === "student" && isBooking && tutor && (
+                <div>
+                  <strong style={{ color: C.white }}>Booking:</strong> 1-on-1 with{" "}
+                  {tutor.name}
+                </div>
+              )}
+
+              {isGroupSession && (
+                <div>
+                  <strong style={{ color: C.white }}>Group:</strong>{" "}
+                  {getBookedCount(event)}/{event.capacity} learners booked
+                  {event.pricePerLearner !== undefined
+                    ? ` · R${event.pricePerLearner} per learner`
+                    : ""}
+                </div>
+              )}
+
+              {isAvailability && (
+                <div>
+                  <strong style={{ color: C.white }}>Availability:</strong> Open
+                  teaching window.
+                </div>
+              )}
+
+              {isBlocked && (
+                <div>
+                  <strong style={{ color: C.white }}>Blocked:</strong>{" "}
+                  {event.reason ?? "Unavailable"}
+                </div>
+              )}
+
+              {event.topic && (
+                <div>
+                  <strong style={{ color: C.white }}>Topic:</strong> {event.topic}
+                </div>
+              )}
+
+              {event.notes && (
+                <div>
+                  <strong style={{ color: C.white }}>Notes:</strong> {event.notes}
+                </div>
+              )}
             </div>
-          )}
 
-          {sessionType && (
-            <div>
-              <strong style={{ color: C.white }}>Session:</strong>{" "}
-              {sessionType.title} · {sessionType.durationMinutes} min · R
-              {sessionType.price}
-            </div>
-          )}
+            {hasActions && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  marginTop: 16,
+                  borderTop: `1px solid ${C.border}`,
+                  paddingTop: 12,
+                }}
+              >
+                {canTutorManageBooking && (
+                  <>
+                    <ActionButton
+                      variant="success"
+                      onClick={() =>
+                        closeAfter(() =>
+                          onUpdateBookingStatus(event.id, "confirmed")
+                        )
+                      }
+                    >
+                      Accept
+                    </ActionButton>
 
-          {currentUser.role === "tutor" && isBooking && (
-            <div>
-              <strong style={{ color: C.white }}>Student:</strong>{" "}
-              {student?.name ?? event.learnerName ?? "Unknown student"}
-            </div>
-          )}
+                    <ActionButton
+                      variant="danger"
+                      onClick={() =>
+                        closeAfter(() =>
+                          onUpdateBookingStatus(event.id, "declined")
+                        )
+                      }
+                    >
+                      Decline
+                    </ActionButton>
+                  </>
+                )}
 
-          {currentUser.role === "student" && isBooking && tutor && (
-            <div>
-              <strong style={{ color: C.white }}>Booking:</strong> 1-on-1 with{" "}
-              {tutor.name}
-            </div>
-          )}
+                {canTutorManageGroupClass && (
+                  <>
+                    <ActionButton onClick={startEditingGroupClass}>
+                      Edit class
+                    </ActionButton>
+                    <ActionButton variant="danger" onClick={deleteGroupClass}>
+                      Remove class
+                    </ActionButton>
+                  </>
+                )}
 
-          {isGroupSession && (
-            <div>
-              <strong style={{ color: C.white }}>Group:</strong>{" "}
-              {getBookedCount(event)}/{event.capacity} learners booked
-              {event.pricePerLearner !== undefined
-                ? ` · R${event.pricePerLearner} per learner`
-                : ""}
-            </div>
-          )}
+                {canTutorManageAvailability && (
+                  <>
+                    <ActionButton onClick={startEditingAvailability}>
+                      Edit
+                    </ActionButton>
+                    <ActionButton
+                      variant="danger"
+                      onClick={deleteAvailabilityWindow}
+                    >
+                      Delete
+                    </ActionButton>
+                  </>
+                )}
 
-          {isAvailability && (
-            <div>
-              <strong style={{ color: C.white }}>Availability:</strong> Open
-              teaching window.
-            </div>
-          )}
+                {canTutorManageBlockedTime && (
+                  <>
+                    <ActionButton onClick={startEditingBlockedTime}>
+                      Edit
+                    </ActionButton>
+                    <ActionButton variant="danger" onClick={deleteBlockedTime}>
+                      Delete
+                    </ActionButton>
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        )}
 
-          {isBlocked && (
-            <div>
-              <strong style={{ color: C.white }}>Blocked:</strong>{" "}
-              {event.reason ?? "Unavailable"}
-            </div>
-          )}
-
-          {event.topic && (
-            <div>
-              <strong style={{ color: C.white }}>Topic:</strong> {event.topic}
-            </div>
-          )}
-
-          {event.notes && (
-            <div>
-              <strong style={{ color: C.white }}>Notes:</strong> {event.notes}
-            </div>
-          )}
-        </div>
-
-        {hasActions && (
+        {isDeleting && (
           <div
             style={{
-              display: "flex",
-              gap: 8,
-              flexWrap: "wrap",
-              marginTop: 16,
+              display: "grid",
+              gap: 12,
+              marginTop: 14,
               borderTop: `1px solid ${C.border}`,
               paddingTop: 12,
             }}
           >
-            {canTutorManageBooking && (
-              <>
-                <ActionButton
-                  variant="success"
-                  onClick={() =>
-                    closeAfter(() => onUpdateBookingStatus(event.id, "confirmed"))
-                  }
-                >
-                  Accept
-                </ActionButton>
+            <div
+              style={{
+                background: "rgba(248, 113, 113, 0.08)",
+                border: "1px solid rgba(248, 113, 113, 0.35)",
+                borderRadius: 12,
+                padding: 12,
+                color: C.text,
+                fontSize: 13,
+                lineHeight: 1.5,
+              }}
+            >
+              <div style={{ color: "#fecaca", fontWeight: 950, marginBottom: 6 }}>
+                Are you sure you want to delete this?
+              </div>
 
-                <ActionButton
-                  variant="danger"
-                  onClick={() =>
-                    closeAfter(() => onUpdateBookingStatus(event.id, "declined"))
-                  }
-                >
-                  Decline
-                </ActionButton>
-              </>
-            )}
+              <div style={{ color: C.white, fontWeight: 850 }}>
+                {getEventTitle(event, sessionType)}
+              </div>
 
-            {canTutorManageGroupClass && (
-              <>
-                <ActionButton onClick={editGroupClass}>Edit class</ActionButton>
-                <ActionButton variant="danger" onClick={deleteGroupClass}>
-                  Remove class
-                </ActionButton>
-              </>
-            )}
+              <div style={{ color: C.muted, marginTop: 4 }}>
+                {formatDateTime(event.startTime)} – {formatDateTime(event.endTime)}
+              </div>
 
-            {canTutorManageAvailability && (
-              <>
-                <ActionButton onClick={editAvailabilityWindow}>Edit</ActionButton>
-                <ActionButton variant="danger" onClick={deleteAvailabilityWindow}>
-                  Delete
-                </ActionButton>
-              </>
-            )}
+              {deleteMode === "group" && getBookedCount(event) > 0 && (
+                <div style={{ color: "#fecaca", marginTop: 8 }}>
+                  This class already has {getBookedCount(event)} learner
+                  {getBookedCount(event) === 1 ? "" : "s"} booked.
+                </div>
+              )}
+            </div>
 
-            {canTutorManageBlockedTime && (
-              <>
-                <ActionButton onClick={editBlockedTime}>Edit</ActionButton>
-                <ActionButton variant="danger" onClick={deleteBlockedTime}>
-                  Delete
-                </ActionButton>
-              </>
-            )}
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+              }}
+            >
+              <ActionButton variant="muted" onClick={cancelDeleting}>
+                Cancel
+              </ActionButton>
+
+              <ActionButton variant="danger" onClick={confirmDelete}>
+                Yes, delete
+              </ActionButton>
+            </div>
           </div>
+        )}
+
+        {isEditing && (
+          <form
+            onSubmit={(formEvent) => {
+              formEvent.preventDefault();
+
+              if (editMode === "group") {
+                saveGroupClass();
+              }
+
+              if (editMode === "availability") {
+                saveAvailability();
+              }
+
+              if (editMode === "blocked") {
+                saveBlockedTime();
+              }
+            }}
+            style={{
+              display: "grid",
+              gap: 12,
+              marginTop: 14,
+              borderTop: `1px solid ${C.border}`,
+              paddingTop: 12,
+            }}
+          >
+            {editMode === "group" && (
+              <>
+                <FieldLabel>
+                  Title
+                  <input
+                    value={editValues.title}
+                    onChange={(event) =>
+                      updateEditValue("title", event.target.value)
+                    }
+                    style={inputStyle}
+                  />
+                </FieldLabel>
+
+                <FieldLabel>
+                  Start time
+                  <input
+                    type="datetime-local"
+                    value={editValues.startTime}
+                    onChange={(event) =>
+                      updateEditValue("startTime", event.target.value)
+                    }
+                    style={inputStyle}
+                    required
+                  />
+                </FieldLabel>
+
+                <FieldLabel>
+                  End time
+                  <input
+                    type="datetime-local"
+                    value={editValues.endTime}
+                    onChange={(event) =>
+                      updateEditValue("endTime", event.target.value)
+                    }
+                    style={inputStyle}
+                    required
+                  />
+                </FieldLabel>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 10,
+                  }}
+                >
+                  <FieldLabel>
+                    Capacity
+                    <input
+                      type="number"
+                      min={Math.max(1, getBookedCount(event))}
+                      value={editValues.capacity}
+                      onChange={(event) =>
+                        updateEditValue("capacity", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </FieldLabel>
+
+                  <FieldLabel>
+                    Price
+                    <input
+                      type="number"
+                      min="0"
+                      value={editValues.pricePerLearner}
+                      onChange={(event) =>
+                        updateEditValue("pricePerLearner", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </FieldLabel>
+                </div>
+              </>
+            )}
+
+            {editMode === "availability" && (
+              <>
+                <FieldLabel>
+                  Start time
+                  <input
+                    type="datetime-local"
+                    value={editValues.startTime}
+                    onChange={(event) =>
+                      updateEditValue("startTime", event.target.value)
+                    }
+                    style={inputStyle}
+                    required
+                  />
+                </FieldLabel>
+
+                <FieldLabel>
+                  End time
+                  <input
+                    type="datetime-local"
+                    value={editValues.endTime}
+                    onChange={(event) =>
+                      updateEditValue("endTime", event.target.value)
+                    }
+                    style={inputStyle}
+                    required
+                  />
+                </FieldLabel>
+              </>
+            )}
+
+            {editMode === "blocked" && (
+              <>
+                <FieldLabel>
+                  Reason
+                  <input
+                    value={editValues.reason}
+                    onChange={(event) =>
+                      updateEditValue("reason", event.target.value)
+                    }
+                    style={inputStyle}
+                  />
+                </FieldLabel>
+
+                <FieldLabel>
+                  Start time
+                  <input
+                    type="datetime-local"
+                    value={editValues.startTime}
+                    onChange={(event) =>
+                      updateEditValue("startTime", event.target.value)
+                    }
+                    style={inputStyle}
+                    required
+                  />
+                </FieldLabel>
+
+                <FieldLabel>
+                  End time
+                  <input
+                    type="datetime-local"
+                    value={editValues.endTime}
+                    onChange={(event) =>
+                      updateEditValue("endTime", event.target.value)
+                    }
+                    style={inputStyle}
+                    required
+                  />
+                </FieldLabel>
+              </>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+              }}
+            >
+              <ActionButton variant="muted" onClick={cancelEditing}>
+                Cancel
+              </ActionButton>
+              <ActionButton type="submit" variant="success">
+                Save changes
+              </ActionButton>
+            </div>
+          </form>
         )}
       </div>
     </>
