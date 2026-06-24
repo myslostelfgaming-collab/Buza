@@ -80,10 +80,60 @@ function getSlotLabel(slot) {
   return "1-on-1 slot";
 }
 
+function getStudentBusyTitle(event) {
+  if (event.kind === "group") {
+    return event.title ?? "Your group class";
+  }
+
+  if (event.kind === "booking") {
+    return event.topic || event.title || "Your existing booking";
+  }
+
+  return event.title ?? "Your timetable item";
+}
+
+function getStudentBusyLabel(event) {
+  if (event.kind === "group") {
+    return "Your timetable · joined group class";
+  }
+
+  if (event.kind === "booking") {
+    return "Your timetable · existing booking";
+  }
+
+  return "Your timetable";
+}
+
+function buildDayItems({ daySlots, dayGroupSessions, dayStudentBusyEvents }) {
+  const slotItems = daySlots.map((slot) => ({
+    id: slot.id ?? `${slot.startTime}-${slot.endTime}`,
+    type: "slot",
+    startTime: slot.startTime,
+    item: slot,
+  }));
+
+  const groupItems = dayGroupSessions.map((session) => ({
+    id: session.id ?? `${session.startTime}-${session.title}`,
+    type: "group",
+    startTime: session.startTime,
+    item: session,
+  }));
+
+  const studentBusyItems = dayStudentBusyEvents.map((event) => ({
+    id: event.id ?? `${event.startTime}-${event.endTime}`,
+    type: "student-busy",
+    startTime: event.startTime,
+    item: event,
+  }));
+
+  return sortByStartTime([...studentBusyItems, ...groupItems, ...slotItems]);
+}
+
 export default function BookingCalendar({
   selectedSession,
   oneOnOneSlots = [],
   groupSessions = [],
+  studentBusyEvents = [],
   selectedSlotId,
   selectedGroupSessionId,
   onSelectOneOnOneSlot,
@@ -95,6 +145,10 @@ export default function BookingCalendar({
 
   const safeGroupSessions = Array.isArray(groupSessions)
     ? groupSessions.filter(hasValidTime)
+    : [];
+
+  const safeStudentBusyEvents = Array.isArray(studentBusyEvents)
+    ? studentBusyEvents.filter(hasValidTime)
     : [];
 
   return (
@@ -121,7 +175,8 @@ export default function BookingCalendar({
           </label>
 
           <div style={{ color: C.muted, fontSize: 13, lineHeight: 1.5 }}>
-            Click a bookable group class or available 1-on-1 slot.
+            Click a bookable group class or available 1-on-1 slot. Your existing
+            timetable is shown in purple so clashes are easier to spot.
           </div>
         </div>
 
@@ -135,6 +190,7 @@ export default function BookingCalendar({
             alignItems: "center",
           }}
         >
+          <span style={{ color: C.violet }}>● Your timetable</span>
           <span style={{ color: C.spark }}>● 1-on-1 slot</span>
           <span style={{ color: C.blue }}>● Group class</span>
           <span style={{ color: C.muted }}>● Not bookable</span>
@@ -153,8 +209,8 @@ export default function BookingCalendar({
             marginBottom: 12,
           }}
         >
-          Select a session type to show 1-on-1 slots. Group classes are visible
-          even before choosing a 1-on-1 session type.
+          Select a session type to show 1-on-1 slots. Group classes and your
+          existing timetable remain visible.
         </div>
       )}
 
@@ -178,7 +234,19 @@ export default function BookingCalendar({
             )
           );
 
-          const hasOptions = daySlots.length > 0 || dayGroupSessions.length > 0;
+          const dayStudentBusyEvents = sortByStartTime(
+            safeStudentBusyEvents.filter(
+              (event) => getDateKey(event.startTime) === day.date
+            )
+          );
+
+          const dayItems = buildDayItems({
+            daySlots,
+            dayGroupSessions,
+            dayStudentBusyEvents,
+          });
+
+          const hasOptions = dayItems.length > 0;
 
           return (
             <div
@@ -194,61 +262,115 @@ export default function BookingCalendar({
               <div style={{ color: C.white, fontWeight: 950 }}>{day.label}</div>
               <div style={{ color: C.muted, fontSize: 12 }}>{day.date}</div>
 
-              {dayGroupSessions.map((session) => {
-                const isBookable = session.isBookable !== false;
-                const isSelected =
-                  isBookable && session.id === selectedGroupSessionId;
+              {dayItems.map((dayItem) => {
+                if (dayItem.type === "student-busy") {
+                  const event = dayItem.item;
 
-                return (
-                  <button
-                    key={session.id ?? `${session.startTime}-${session.title}`}
-                    onClick={() => {
-                      if (isBookable) {
-                        onSelectGroupSession(session.id);
-                      }
-                    }}
-                    style={{
-                      width: "100%",
-                      background: isSelected ? C.blue : C.surface,
-                      color: isSelected ? "#000" : C.text,
-                      border: `1px solid ${isSelected ? C.blue : C.border}`,
-                      borderLeft: `4px solid ${isBookable ? C.blue : C.muted}`,
-                      borderRadius: 12,
-                      padding: 10,
-                      marginTop: 10,
-                      textAlign: "left",
-                      cursor: isBookable ? "pointer" : "not-allowed",
-                      fontFamily: "inherit",
-                      opacity: isBookable ? 1 : 0.65,
-                    }}
-                  >
-                    <div style={{ fontWeight: 950 }}>{formatTimeRange(session)}</div>
-
-                    <div style={{ fontWeight: 900, marginTop: 4 }}>
-                      {session.title ?? "Group class"}
-                    </div>
-
+                  return (
                     <div
+                      key={`student-${dayItem.id}`}
                       style={{
-                        color: isSelected ? "#000" : C.muted,
-                        fontSize: 12,
-                        marginTop: 4,
-                        lineHeight: 1.4,
+                        width: "100%",
+                        background: C.violet + "18",
+                        color: C.text,
+                        border: `1px solid ${C.violet}`,
+                        borderLeft: `4px solid ${C.violet}`,
+                        borderRadius: 12,
+                        padding: 10,
+                        marginTop: 10,
+                        textAlign: "left",
+                        fontFamily: "inherit",
+                        boxSizing: "border-box",
                       }}
                     >
-                      {getGroupSessionLabel(session)}
-                    </div>
-                  </button>
-                );
-              })}
+                      <div style={{ fontWeight: 950 }}>
+                        {formatTimeRange(event)}
+                      </div>
 
-              {daySlots.map((slot) => {
+                      <div
+                        style={{
+                          color: C.white,
+                          fontWeight: 900,
+                          marginTop: 4,
+                        }}
+                      >
+                        {getStudentBusyTitle(event)}
+                      </div>
+
+                      <div
+                        style={{
+                          color: C.muted,
+                          fontSize: 12,
+                          marginTop: 4,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {getStudentBusyLabel(event)}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (dayItem.type === "group") {
+                  const session = dayItem.item;
+                  const isBookable = session.isBookable !== false;
+                  const isSelected =
+                    isBookable && session.id === selectedGroupSessionId;
+
+                  return (
+                    <button
+                      key={`group-${dayItem.id}`}
+                      type="button"
+                      onClick={() => {
+                        if (isBookable) {
+                          onSelectGroupSession(session.id);
+                        }
+                      }}
+                      style={{
+                        width: "100%",
+                        background: isSelected ? C.blue : C.surface,
+                        color: isSelected ? "#000" : C.text,
+                        border: `1px solid ${isSelected ? C.blue : C.border}`,
+                        borderLeft: `4px solid ${isBookable ? C.blue : C.muted}`,
+                        borderRadius: 12,
+                        padding: 10,
+                        marginTop: 10,
+                        textAlign: "left",
+                        cursor: isBookable ? "pointer" : "not-allowed",
+                        fontFamily: "inherit",
+                        opacity: isBookable ? 1 : 0.65,
+                      }}
+                    >
+                      <div style={{ fontWeight: 950 }}>
+                        {formatTimeRange(session)}
+                      </div>
+
+                      <div style={{ fontWeight: 900, marginTop: 4 }}>
+                        {session.title ?? "Group class"}
+                      </div>
+
+                      <div
+                        style={{
+                          color: isSelected ? "#000" : C.muted,
+                          fontSize: 12,
+                          marginTop: 4,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {getGroupSessionLabel(session)}
+                      </div>
+                    </button>
+                  );
+                }
+
+                const slot = dayItem.item;
                 const isBookable = slot.isBookable !== false;
                 const isSelected = isBookable && slot.id === selectedSlotId;
 
                 return (
                   <button
-                    key={slot.id ?? `${slot.startTime}-${slot.endTime}`}
+                    key={`slot-${dayItem.id}`}
+                    type="button"
                     onClick={() => {
                       if (isBookable) {
                         onSelectOneOnOneSlot(slot.id);
@@ -292,7 +414,7 @@ export default function BookingCalendar({
                     lineHeight: 1.5,
                   }}
                 >
-                  No bookable times
+                  No visible timetable items
                 </div>
               )}
             </div>

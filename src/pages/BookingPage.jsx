@@ -633,6 +633,7 @@ export default function BookingPage({
               selectedSession={selectedSession}
               oneOnOneSlots={oneOnOneCalendarSlots}
               groupSessions={visibleGroupSessions}
+              studentBusyEvents={studentBusyEvents}
               selectedSlotId={selectedSlotId}
               selectedGroupSessionId={selectedGroupSessionId}
               onSelectOneOnOneSlot={selectOneOnOneSlot}
