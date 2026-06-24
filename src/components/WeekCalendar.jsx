@@ -135,6 +135,7 @@ function getEventGridPosition(event, startTime, endTime) {
 export default function WeekCalendar({
   weekDays,
   visibleEvents,
+  validationEvents = visibleEvents,
   currentUser,
   onUpdateBookingStatus,
   onUpdateAdvertisedSession,
@@ -444,6 +445,7 @@ export default function WeekCalendar({
           event={selectedEventInfo.event}
           anchorRect={selectedEventInfo.anchorRect}
           currentUser={currentUser}
+          allEvents={validationEvents}
           onClose={() => setSelectedEventInfo(null)}
           onUpdateBookingStatus={onUpdateBookingStatus}
           onUpdateAdvertisedSession={onUpdateAdvertisedSession}

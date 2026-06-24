@@ -380,18 +380,19 @@ export default function MonthCalendar({
 
       {selectedEventInfo && (
         <EventDetailPopover
-  event={selectedEventInfo.event}
-  anchorRect={selectedEventInfo.anchorRect}
-  currentUser={currentUser}
-  onClose={() => setSelectedEventInfo(null)}
-  onUpdateBookingStatus={onUpdateBookingStatus}
-  onUpdateAdvertisedSession={onUpdateAdvertisedSession}
-  onRemoveAdvertisedSession={onRemoveAdvertisedSession}
-  onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
-  onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
-  onUpdateBlockedTime={onUpdateBlockedTime}
-  onRemoveBlockedTime={onRemoveBlockedTime}
-/>
+          event={selectedEventInfo.event}
+          anchorRect={selectedEventInfo.anchorRect}
+          currentUser={currentUser}
+          allEvents={visibleEvents}
+          onClose={() => setSelectedEventInfo(null)}
+          onUpdateBookingStatus={onUpdateBookingStatus}
+          onUpdateAdvertisedSession={onUpdateAdvertisedSession}
+          onRemoveAdvertisedSession={onRemoveAdvertisedSession}
+          onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
+          onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
+          onUpdateBlockedTime={onUpdateBlockedTime}
+          onRemoveBlockedTime={onRemoveBlockedTime}
+        />
       )}
     </div>
   );

@@ -107,6 +107,66 @@ function getDateRangeError(startTime, endTime) {
   return "";
 }
 
+function eventsOverlap(startTimeA, endTimeA, startTimeB, endTimeB) {
+  const startA = new Date(startTimeA);
+  const endA = new Date(endTimeA);
+  const startB = new Date(startTimeB);
+  const endB = new Date(endTimeB);
+
+  if (
+    Number.isNaN(startA.getTime()) ||
+    Number.isNaN(endA.getTime()) ||
+    Number.isNaN(startB.getTime()) ||
+    Number.isNaN(endB.getTime())
+  ) {
+    return false;
+  }
+
+  return startA < endB && endA > startB;
+}
+
+function getConflictEvent({
+  currentEventId,
+  startTime,
+  endTime,
+  allEvents,
+  conflictKinds,
+}) {
+  return allEvents.find((candidateEvent) => {
+    if (candidateEvent.id === currentEventId) {
+      return false;
+    }
+
+    if (!conflictKinds.includes(candidateEvent.kind)) {
+      return false;
+    }
+
+    return eventsOverlap(
+      startTime,
+      endTime,
+      candidateEvent.startTime,
+      candidateEvent.endTime
+    );
+  });
+}
+
+function getConflictMessage(conflictEvent) {
+  if (!conflictEvent) {
+    return "";
+  }
+
+  const title =
+    conflictEvent.title ??
+    conflictEvent.topic ??
+    conflictEvent.reason ??
+    conflictEvent.kind ??
+    "another timetable item";
+
+  return `This time clashes with ${title} from ${formatDateTime(
+    conflictEvent.startTime
+  )} to ${formatDateTime(conflictEvent.endTime)}.`;
+}
+
 function ActionButton({ children, onClick, variant = "default", type = "button" }) {
   const isDanger = variant === "danger";
   const isSuccess = variant === "success";
@@ -178,6 +238,7 @@ export default function EventDetailPopover({
   event,
   anchorRect,
   currentUser,
+  allEvents = [],
   onClose,
   onUpdateBookingStatus,
   onUpdateAdvertisedSession,
@@ -305,6 +366,19 @@ export default function EventDetailPopover({
       return;
     }
 
+    const conflictEvent = getConflictEvent({
+      currentEventId: event.id,
+      startTime: editValues.startTime,
+      endTime: editValues.endTime,
+      allEvents,
+      conflictKinds: ["booking", "group", "blocked"],
+    });
+
+    if (conflictEvent) {
+      setFormError(getConflictMessage(conflictEvent));
+      return;
+    }
+
     const bookedCount = getBookedCount(event);
     const capacityNumber = Number(editValues.capacity);
 
@@ -349,6 +423,19 @@ export default function EventDetailPopover({
       return;
     }
 
+    const conflictEvent = getConflictEvent({
+      currentEventId: event.id,
+      startTime: editValues.startTime,
+      endTime: editValues.endTime,
+      allEvents,
+      conflictKinds: ["blocked"],
+    });
+
+    if (conflictEvent) {
+      setFormError(getConflictMessage(conflictEvent));
+      return;
+    }
+
     closeAfter(() =>
       onUpdateAvailabilityWindow(event.id, {
         startTime: editValues.startTime,
@@ -369,6 +456,19 @@ export default function EventDetailPopover({
 
     if (dateError) {
       setFormError(dateError);
+      return;
+    }
+
+    const conflictEvent = getConflictEvent({
+      currentEventId: event.id,
+      startTime: editValues.startTime,
+      endTime: editValues.endTime,
+      allEvents,
+      conflictKinds: ["booking", "group", "blocked"],
+    });
+
+    if (conflictEvent) {
+      setFormError(getConflictMessage(conflictEvent));
       return;
     }
 
