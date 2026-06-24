@@ -14,8 +14,87 @@ function isValidTimeRange(startTime, endTime) {
   return startTime && endTime && startTime < endTime;
 }
 
+function formatDateTime(dateTime) {
+  return new Date(dateTime).toLocaleString([], {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function eventsOverlap(startTimeA, endTimeA, startTimeB, endTimeB) {
+  const startA = new Date(startTimeA);
+  const endA = new Date(endTimeA);
+  const startB = new Date(startTimeB);
+  const endB = new Date(endTimeB);
+
+  if (
+    Number.isNaN(startA.getTime()) ||
+    Number.isNaN(endA.getTime()) ||
+    Number.isNaN(startB.getTime()) ||
+    Number.isNaN(endB.getTime())
+  ) {
+    return false;
+  }
+
+  return startA < endB && endA > startB;
+}
+
+function getConflictEvent({ startTime, endTime, validationEvents, conflictKinds }) {
+  return validationEvents.find((event) => {
+    if (!conflictKinds.includes(event.kind)) {
+      return false;
+    }
+
+    return eventsOverlap(startTime, endTime, event.startTime, event.endTime);
+  });
+}
+
+function getConflictMessage(conflictEvent) {
+  if (!conflictEvent) {
+    return "";
+  }
+
+  const title =
+    conflictEvent.title ??
+    conflictEvent.topic ??
+    conflictEvent.reason ??
+    conflictEvent.kind ??
+    "another timetable item";
+
+  return `This time clashes with ${title} from ${formatDateTime(
+    conflictEvent.startTime
+  )} to ${formatDateTime(conflictEvent.endTime)}.`;
+}
+
+function ValidationError({ message }) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <div
+      style={{
+        background: "rgba(248, 113, 113, 0.08)",
+        border: "1px solid rgba(248, 113, 113, 0.35)",
+        color: "#fecaca",
+        borderRadius: 12,
+        padding: 10,
+        fontSize: 13,
+        lineHeight: 1.45,
+        fontWeight: 800,
+      }}
+    >
+      {message}
+    </div>
+  );
+}
+
 export default function TutorGroupClassCreator({
   currentUser,
+  validationEvents = [],
   onAddAdvertisedSession,
 }) {
   const tutor = useMemo(
@@ -30,10 +109,11 @@ export default function TutorGroupClassCreator({
   const [endTime, setEndTime] = useState("17:30");
   const [capacity, setCapacity] = useState("12");
   const [pricePerLearner, setPricePerLearner] = useState("80");
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     setSessionTypeId(tutor?.sessionTypes[0]?.id ?? "");
-  }, [tutor?.id]);
+  }, [tutor?.id, tutor?.sessionTypes]);
 
   const selectedSessionType =
     tutor?.sessionTypes.find((session) => session.id === sessionTypeId) ?? null;
@@ -53,22 +133,66 @@ export default function TutorGroupClassCreator({
     Number.isFinite(priceNumber) &&
     priceNumber >= 0;
 
+  const clearError = () => {
+    setFormError("");
+  };
+
   const createGroupClass = () => {
-    if (!canCreateGroupClass) return;
+    if (!title.trim()) {
+      setFormError("Please enter a title for the group class.");
+      return;
+    }
+
+    if (!sessionTypeId) {
+      setFormError("Please choose a session type.");
+      return;
+    }
+
+    if (!date || !isValidTimeRange(startTime, endTime)) {
+      setFormError("Please choose a valid date and time range.");
+      return;
+    }
+
+    if (!Number.isFinite(capacityNumber) || capacityNumber < 1) {
+      setFormError("Capacity must be at least 1 learner.");
+      return;
+    }
+
+    if (!Number.isFinite(priceNumber) || priceNumber < 0) {
+      setFormError("Price must be a valid amount of R0 or more.");
+      return;
+    }
+
+    const startDateTime = toDateTime(date, startTime);
+    const endDateTime = toDateTime(date, endTime);
+
+    const conflictEvent = getConflictEvent({
+      startTime: startDateTime,
+      endTime: endDateTime,
+      validationEvents,
+      conflictKinds: ["booking", "group", "blocked"],
+    });
+
+    if (conflictEvent) {
+      setFormError(getConflictMessage(conflictEvent));
+      return;
+    }
 
     onAddAdvertisedSession({
       id: makeId("group"),
       tutorId: currentUser.tutorId,
       sessionTypeId,
       title: title.trim(),
-      startTime: toDateTime(date, startTime),
-      endTime: toDateTime(date, endTime),
+      startTime: startDateTime,
+      endTime: endDateTime,
       capacity: capacityNumber,
       pricePerLearner: priceNumber,
       bookedStudentIds: [],
       status: "advertised",
       isUserCreated: true,
     });
+
+    setFormError("");
   };
 
   if (!tutor) {
@@ -105,16 +229,24 @@ export default function TutorGroupClassCreator({
           marginTop: 16,
         }}
       >
+        <ValidationError message={formError} />
+
         <input
           value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          onChange={(event) => {
+            clearError();
+            setTitle(event.target.value);
+          }}
           placeholder="Group class title"
           style={inputStyle}
         />
 
         <select
           value={sessionTypeId}
-          onChange={(event) => setSessionTypeId(event.target.value)}
+          onChange={(event) => {
+            clearError();
+            setSessionTypeId(event.target.value);
+          }}
           style={{
             ...inputStyle,
             cursor: "pointer",
@@ -151,7 +283,10 @@ export default function TutorGroupClassCreator({
         <input
           type="date"
           value={date}
-          onChange={(event) => setDate(event.target.value)}
+          onChange={(event) => {
+            clearError();
+            setDate(event.target.value);
+          }}
           style={inputStyle}
         />
 
@@ -165,14 +300,20 @@ export default function TutorGroupClassCreator({
           <input
             type="time"
             value={startTime}
-            onChange={(event) => setStartTime(event.target.value)}
+            onChange={(event) => {
+              clearError();
+              setStartTime(event.target.value);
+            }}
             style={inputStyle}
           />
 
           <input
             type="time"
             value={endTime}
-            onChange={(event) => setEndTime(event.target.value)}
+            onChange={(event) => {
+              clearError();
+              setEndTime(event.target.value);
+            }}
             style={inputStyle}
           />
         </div>
@@ -188,7 +329,10 @@ export default function TutorGroupClassCreator({
             type="number"
             min="1"
             value={capacity}
-            onChange={(event) => setCapacity(event.target.value)}
+            onChange={(event) => {
+              clearError();
+              setCapacity(event.target.value);
+            }}
             placeholder="Capacity"
             style={inputStyle}
           />
@@ -197,13 +341,17 @@ export default function TutorGroupClassCreator({
             type="number"
             min="0"
             value={pricePerLearner}
-            onChange={(event) => setPricePerLearner(event.target.value)}
+            onChange={(event) => {
+              clearError();
+              setPricePerLearner(event.target.value);
+            }}
             placeholder="Price per learner"
             style={inputStyle}
           />
         </div>
 
         <button
+          type="button"
           onClick={createGroupClass}
           disabled={!canCreateGroupClass}
           style={{
@@ -219,6 +367,11 @@ export default function TutorGroupClassCreator({
         >
           Create group class
         </button>
+
+        <div style={{ color: C.muted, fontSize: 12, lineHeight: 1.45 }}>
+          Group classes cannot overlap bookings, blocked times, or other group
+          classes.
+        </div>
       </div>
     </div>
   );

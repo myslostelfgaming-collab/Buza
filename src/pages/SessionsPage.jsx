@@ -83,22 +83,22 @@ export default function SessionsPage({
   );
 
   const allAdvertisedSessions = useMemo(
-  () =>
-    applyAdvertisedSessionBookingOverrides(
-      [
-        ...advertisedSessions.map((session) => ({
-          ...session,
-          isUserCreated: false,
-        })),
-        ...extraAdvertisedSessions.map((session) => ({
-          ...session,
-          isUserCreated: true,
-        })),
-      ],
-      advertisedSessionBookingOverrides
-    ),
-  [extraAdvertisedSessions, advertisedSessionBookingOverrides]
-);
+    () =>
+      applyAdvertisedSessionBookingOverrides(
+        [
+          ...advertisedSessions.map((session) => ({
+            ...session,
+            isUserCreated: false,
+          })),
+          ...extraAdvertisedSessions.map((session) => ({
+            ...session,
+            isUserCreated: true,
+          })),
+        ],
+        advertisedSessionBookingOverrides
+      ),
+    [extraAdvertisedSessions, advertisedSessionBookingOverrides]
+  );
 
   const visibleEvents = useMemo(() => {
     if (currentUser.role === "student") {
@@ -227,12 +227,14 @@ export default function SessionsPage({
         <>
           <TutorCalendarEditor
             currentUser={currentUser}
+            validationEvents={visibleEvents}
             onAddAvailabilityWindow={onAddAvailabilityWindow}
             onAddBlockedTime={onAddBlockedTime}
           />
 
           <TutorGroupClassCreator
             currentUser={currentUser}
+            validationEvents={visibleEvents}
             onAddAdvertisedSession={onAddAdvertisedSession}
           />
         </>
@@ -274,13 +276,14 @@ export default function SessionsPage({
           <WeekCalendar
             weekDays={weekDays}
             visibleEvents={visibleEvents}
+            validationEvents={visibleEvents}
             currentUser={currentUser}
             onUpdateBookingStatus={onUpdateBookingStatus}
+            onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveAdvertisedSession={onRemoveAdvertisedSession}
             onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
             onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
             onUpdateBlockedTime={onUpdateBlockedTime}
-            onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveBlockedTime={onRemoveBlockedTime}
           />
         )}
@@ -292,11 +295,11 @@ export default function SessionsPage({
             visibleEvents={visibleEvents}
             currentUser={currentUser}
             onUpdateBookingStatus={onUpdateBookingStatus}
+            onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveAdvertisedSession={onRemoveAdvertisedSession}
             onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
             onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
             onUpdateBlockedTime={onUpdateBlockedTime}
-            onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveBlockedTime={onRemoveBlockedTime}
           />
         )}
@@ -312,11 +315,11 @@ export default function SessionsPage({
             visibleEvents={visibleEvents}
             currentUser={currentUser}
             onUpdateBookingStatus={onUpdateBookingStatus}
+            onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveAdvertisedSession={onRemoveAdvertisedSession}
             onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
             onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
             onUpdateBlockedTime={onUpdateBlockedTime}
-            onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveBlockedTime={onRemoveBlockedTime}
           />
         )}
