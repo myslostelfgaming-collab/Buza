@@ -6,6 +6,8 @@ import DiscoverPage from "./pages/DiscoverPage";
 import TutorProfilePage from "./pages/TutorProfilePage";
 import BookingPage from "./pages/BookingPage";
 import SessionsPage from "./pages/SessionsPage";
+import { bookings } from "./data/mockBookings";
+import { tutors } from "./data/mockTutors";
 import { C } from "./data/theme";
 import { defaultCurrentUserId, users } from "./data/mockUsers";
 
@@ -18,6 +20,7 @@ const initialDemoState = {
   extraAdvertisedSessions: [],
   advertisedSessionBookingOverrides: {},
   bookingStatusOverrides: {},
+  notifications: [],
 };
 
 function loadDemoState() {
@@ -46,6 +49,71 @@ function saveDemoState(demoState) {
   }
 }
 
+function makeId(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function formatDateTime(dateTime) {
+  return new Date(dateTime).toLocaleString([], {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatNotificationTime(dateTime) {
+  const date = new Date(dateTime);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleString([], {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getTutor(tutorId) {
+  return tutors.find((tutor) => tutor.id === tutorId) ?? null;
+}
+
+function getTutorUser(tutorId) {
+  return (
+    users.find((user) => user.role === "tutor" && user.tutorId === tutorId) ??
+    null
+  );
+}
+
+function getStudentUser(studentId) {
+  return users.find((user) => user.id === studentId) ?? null;
+}
+
+function createNotification({
+  userId,
+  type,
+  title,
+  message,
+  bookingId = null,
+  relatedId = null,
+}) {
+  return {
+    id: makeId("notification"),
+    userId,
+    type,
+    title,
+    message,
+    bookingId,
+    relatedId,
+    createdAt: new Date().toISOString(),
+    read: false,
+  };
+}
+
 function DemoResetButton({ onClick }) {
   return (
     <button
@@ -68,11 +136,387 @@ function DemoResetButton({ onClick }) {
   );
 }
 
+function SmallActionButton({
+  children,
+  onClick,
+  variant = "default",
+  disabled = false,
+}) {
+  const isSuccess = variant === "success";
+  const isDanger = variant === "danger";
+  const isMuted = variant === "muted";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        background: isSuccess
+          ? C.green
+          : isDanger
+          ? "transparent"
+          : isMuted
+          ? C.surface
+          : C.spark,
+        color: isSuccess || variant === "default" ? "#000" : isDanger ? "#F87171" : C.text,
+        border: isSuccess || variant === "default"
+          ? "none"
+          : isDanger
+          ? "1px solid #F87171"
+          : `1px solid ${C.border}`,
+        borderRadius: 999,
+        padding: "7px 10px",
+        fontSize: 12,
+        fontWeight: 950,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function BookingStatusBadge({ status }) {
+  if (!status) {
+    return null;
+  }
+
+  const color =
+    status === "confirmed"
+      ? C.green
+      : status === "declined"
+      ? "#F87171"
+      : status === "pending"
+      ? C.spark
+      : C.muted;
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        borderRadius: 999,
+        padding: "3px 8px",
+        background: color + "22",
+        color,
+        fontSize: 11,
+        fontWeight: 950,
+        textTransform: "capitalize",
+      }}
+    >
+      {status}
+    </span>
+  );
+}
+
+function NotificationBell({
+  notifications,
+  unreadCount,
+  isOpen,
+  onToggle,
+  onMarkRead,
+  onMarkAllRead,
+  onViewTimetable,
+  onAcceptBooking,
+  onDeclineBooking,
+  getBookingStatus,
+}) {
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        title="Notifications"
+        style={{
+          position: "relative",
+          background: isOpen ? C.spark : C.card,
+          color: isOpen ? "#000" : C.text,
+          border: `1px solid ${isOpen ? C.spark : C.border}`,
+          borderRadius: 999,
+          padding: "8px 12px",
+          fontWeight: 900,
+          cursor: "pointer",
+        }}
+      >
+        🔔 Notifications
+        {unreadCount > 0 && (
+          <span
+            style={{
+              position: "absolute",
+              top: -7,
+              right: -7,
+              minWidth: 20,
+              height: 20,
+              borderRadius: 999,
+              background: "#F87171",
+              color: "#000",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 11,
+              fontWeight: 950,
+              border: `2px solid ${C.bg}`,
+            }}
+          >
+            {unreadCount}
+          </span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: "absolute",
+            right: 0,
+            top: "calc(100% + 10px)",
+            width: 380,
+            maxWidth: "calc(100vw - 36px)",
+            background: C.card,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            padding: 14,
+            boxShadow: "0 18px 60px rgba(0,0,0,0.45)",
+            zIndex: 10000,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 10,
+              alignItems: "center",
+              marginBottom: 10,
+            }}
+          >
+            <div>
+              <div style={{ color: C.white, fontWeight: 950 }}>
+                Notifications
+              </div>
+              <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>
+                {unreadCount} unread
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onMarkAllRead}
+              disabled={unreadCount === 0}
+              style={{
+                background: "transparent",
+                color: unreadCount === 0 ? C.muted : C.spark,
+                border: `1px solid ${unreadCount === 0 ? C.border : C.spark}`,
+                borderRadius: 999,
+                padding: "6px 9px",
+                fontSize: 12,
+                fontWeight: 900,
+                cursor: unreadCount === 0 ? "not-allowed" : "pointer",
+                opacity: unreadCount === 0 ? 0.5 : 1,
+              }}
+            >
+              Mark all read
+            </button>
+          </div>
+
+          {notifications.length === 0 ? (
+            <div
+              style={{
+                background: C.surface,
+                border: `1px dashed ${C.border}`,
+                borderRadius: 12,
+                padding: 14,
+                color: C.muted,
+                lineHeight: 1.5,
+                fontSize: 13,
+              }}
+            >
+              No notifications yet. Booking requests and tutor responses will
+              appear here.
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gap: 10,
+                maxHeight: 440,
+                overflowY: "auto",
+              }}
+            >
+              {notifications.map((notification) => {
+                const bookingStatus = notification.bookingId
+                  ? getBookingStatus(notification.bookingId)
+                  : null;
+
+                const canRespondToBooking =
+                  notification.type === "booking-requested" &&
+                  notification.bookingId &&
+                  bookingStatus === "pending";
+
+                const hasBookingLink = Boolean(notification.bookingId);
+
+                return (
+                  <div
+                    key={notification.id}
+                    style={{
+                      background: notification.read
+                        ? C.surface
+                        : "rgba(250, 204, 21, 0.09)",
+                      border: `1px solid ${
+                        notification.read
+                          ? C.border
+                          : "rgba(250, 204, 21, 0.45)"
+                      }`,
+                      borderRadius: 12,
+                      padding: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        alignItems: "start",
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            color: C.white,
+                            fontWeight: 950,
+                            lineHeight: 1.25,
+                          }}
+                        >
+                          {notification.title}
+                        </div>
+
+                        <div
+                          style={{
+                            color: C.muted,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            marginTop: 3,
+                          }}
+                        >
+                          {formatNotificationTime(notification.createdAt)}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <BookingStatusBadge status={bookingStatus} />
+
+                        {!notification.read && (
+                          <span
+                            style={{
+                              background: C.spark,
+                              color: "#000",
+                              borderRadius: 999,
+                              padding: "2px 7px",
+                              fontSize: 10,
+                              fontWeight: 950,
+                            }}
+                          >
+                            New
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        color: C.text,
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        marginTop: 8,
+                      }}
+                    >
+                      {notification.message}
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 7,
+                        flexWrap: "wrap",
+                        marginTop: 11,
+                      }}
+                    >
+                      {canRespondToBooking && (
+                        <>
+                          <SmallActionButton
+                            variant="success"
+                            onClick={() => onAcceptBooking(notification)}
+                          >
+                            Accept
+                          </SmallActionButton>
+
+                          <SmallActionButton
+                            variant="danger"
+                            onClick={() => onDeclineBooking(notification)}
+                          >
+                            Decline
+                          </SmallActionButton>
+                        </>
+                      )}
+
+                      {hasBookingLink && (
+                        <SmallActionButton
+                          variant="default"
+                          onClick={() => onViewTimetable(notification)}
+                        >
+                          View timetable
+                        </SmallActionButton>
+                      )}
+
+                      {!notification.read && (
+                        <SmallActionButton
+                          variant="muted"
+                          onClick={() => onMarkRead(notification.id)}
+                        >
+                          Mark read
+                        </SmallActionButton>
+                      )}
+                    </div>
+
+                    {notification.type === "booking-requested" &&
+                      bookingStatus &&
+                      bookingStatus !== "pending" && (
+                        <div
+                          style={{
+                            color: C.muted,
+                            fontSize: 12,
+                            lineHeight: 1.4,
+                            marginTop: 8,
+                          }}
+                        >
+                          This request has already been {bookingStatus}.
+                        </div>
+                      )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [page, setPage] = useState("home");
   const [selectedTutorId, setSelectedTutorId] = useState(null);
   const [demoState, setDemoState] = useState(loadDemoState);
   const [currentUserId, setCurrentUserId] = useState(defaultCurrentUserId);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const {
     extraBookings,
@@ -81,14 +525,38 @@ function App() {
     extraAdvertisedSessions,
     advertisedSessionBookingOverrides,
     bookingStatusOverrides,
+    notifications,
   } = demoState;
 
   useEffect(() => {
     saveDemoState(demoState);
   }, [demoState]);
 
+  useEffect(() => {
+    setShowNotifications(false);
+  }, [currentUserId]);
+
   const currentUser =
     users.find((user) => user.id === currentUserId) ?? users[0];
+
+  const currentUserNotifications = notifications
+    .filter((notification) => notification.userId === currentUser.id)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  const unreadNotificationCount = currentUserNotifications.filter(
+    (notification) => !notification.read
+  ).length;
+
+  const getBookingById = (bookingId) =>
+    extraBookings.find((booking) => booking.id === bookingId) ??
+    bookings.find((booking) => booking.id === bookingId) ??
+    null;
+
+  const getBookingStatus = (bookingId) => {
+    const booking = getBookingById(bookingId);
+
+    return bookingStatusOverrides[bookingId] ?? booking?.status ?? null;
+  };
 
   const viewTutor = (tutorId) => {
     setSelectedTutorId(tutorId);
@@ -102,7 +570,7 @@ function App() {
 
   const resetDemoData = () => {
     const confirmed = window.confirm(
-      "Reset all demo-created bookings, availability, blocked times, and group classes?"
+      "Reset all demo-created bookings, availability, blocked times, group classes, and notifications?"
     );
 
     if (!confirmed) {
@@ -111,6 +579,29 @@ function App() {
 
     localStorage.removeItem(BUZA_STORAGE_KEY);
     setDemoState(initialDemoState);
+    setShowNotifications(false);
+  };
+
+  const markNotificationRead = (notificationId) => {
+    setDemoState((currentState) => ({
+      ...currentState,
+      notifications: currentState.notifications.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, read: true }
+          : notification
+      ),
+    }));
+  };
+
+  const markAllCurrentUserNotificationsRead = () => {
+    setDemoState((currentState) => ({
+      ...currentState,
+      notifications: currentState.notifications.map((notification) =>
+        notification.userId === currentUser.id
+          ? { ...notification, read: true }
+          : notification
+      ),
+    }));
   };
 
   const requestBooking = ({
@@ -137,10 +628,33 @@ function App() {
       notes: notes.trim(),
     };
 
-    setDemoState((currentState) => ({
-      ...currentState,
-      extraBookings: [newBooking, ...currentState.extraBookings],
-    }));
+    const tutorUser = getTutorUser(tutorId);
+    const tutor = getTutor(tutorId);
+
+    setDemoState((currentState) => {
+      const newNotifications = tutorUser
+        ? [
+            createNotification({
+              userId: tutorUser.id,
+              type: "booking-requested",
+              title: "New booking request",
+              message: `${currentUser.name} requested a lesson${
+                tutor ? ` with ${tutor.name}` : ""
+              } on ${formatDateTime(slot.startTime)}. Topic: ${
+                topic.trim() || "Not specified"
+              }.`,
+              bookingId: newBooking.id,
+            }),
+            ...currentState.notifications,
+          ]
+        : currentState.notifications;
+
+      return {
+        ...currentState,
+        extraBookings: [newBooking, ...currentState.extraBookings],
+        notifications: newNotifications,
+      };
+    });
 
     setPage("sessions");
   };
@@ -195,16 +709,99 @@ function App() {
   };
 
   const updateBookingStatus = (bookingId, status) => {
-    setDemoState((currentState) => ({
-      ...currentState,
-      extraBookings: currentState.extraBookings.map((booking) =>
+    setDemoState((currentState) => {
+      const existingBooking =
+        currentState.extraBookings.find((booking) => booking.id === bookingId) ??
+        bookings.find((booking) => booking.id === bookingId) ??
+        null;
+
+      const previousStatus =
+        currentState.bookingStatusOverrides[bookingId] ??
+        existingBooking?.status ??
+        null;
+
+      const updatedExtraBookings = currentState.extraBookings.map((booking) =>
         booking.id === bookingId ? { ...booking, status } : booking
-      ),
-      bookingStatusOverrides: {
-        ...currentState.bookingStatusOverrides,
-        [bookingId]: status,
-      },
-    }));
+      );
+
+      const shouldNotifyStudent =
+        existingBooking &&
+        existingBooking.studentId &&
+        previousStatus !== status &&
+        (status === "confirmed" || status === "declined");
+
+      const tutor = existingBooking ? getTutor(existingBooking.tutorId) : null;
+      const studentUser = shouldNotifyStudent
+        ? getStudentUser(existingBooking.studentId)
+        : null;
+
+      const studentNotification =
+        shouldNotifyStudent && studentUser
+          ? createNotification({
+              userId: studentUser.id,
+              type:
+                status === "confirmed"
+                  ? "booking-confirmed"
+                  : "booking-declined",
+              title:
+                status === "confirmed"
+                  ? "Booking confirmed"
+                  : "Booking declined",
+              message:
+                status === "confirmed"
+                  ? `Your lesson with ${
+                      tutor?.name ?? "your tutor"
+                    } on ${formatDateTime(
+                      existingBooking.startTime
+                    )} has been confirmed.`
+                  : `Your lesson request with ${
+                      tutor?.name ?? "your tutor"
+                    } on ${formatDateTime(
+                      existingBooking.startTime
+                    )} was declined.`,
+              bookingId,
+            })
+          : null;
+
+      return {
+        ...currentState,
+        extraBookings: updatedExtraBookings,
+        bookingStatusOverrides: {
+          ...currentState.bookingStatusOverrides,
+          [bookingId]: status,
+        },
+        notifications: studentNotification
+          ? [studentNotification, ...currentState.notifications]
+          : currentState.notifications,
+      };
+    });
+  };
+
+  const viewNotificationTimetable = (notification) => {
+    if (!notification.read) {
+      markNotificationRead(notification.id);
+    }
+
+    setShowNotifications(false);
+    setPage("sessions");
+  };
+
+  const acceptNotificationBooking = (notification) => {
+    if (!notification.bookingId) {
+      return;
+    }
+
+    updateBookingStatus(notification.bookingId, "confirmed");
+    markNotificationRead(notification.id);
+  };
+
+  const declineNotificationBooking = (notification) => {
+    if (!notification.bookingId) {
+      return;
+    }
+
+    updateBookingStatus(notification.bookingId, "declined");
+    markNotificationRead(notification.id);
   };
 
   const addAvailabilityWindow = (availabilityWindow) => {
@@ -274,6 +871,7 @@ function App() {
       ],
     }));
   };
+
   const updateAdvertisedSession = (sessionId, updatedFields) => {
     setDemoState((currentState) => ({
       ...currentState,
@@ -283,6 +881,7 @@ function App() {
       ),
     }));
   };
+
   const removeAdvertisedSession = (sessionId) => {
     setDemoState((currentState) => ({
       ...currentState,
@@ -392,6 +991,19 @@ function App() {
             <CurrentUserSwitcher
               currentUserId={currentUserId}
               onChange={setCurrentUserId}
+            />
+
+            <NotificationBell
+              notifications={currentUserNotifications}
+              unreadCount={unreadNotificationCount}
+              isOpen={showNotifications}
+              onToggle={() => setShowNotifications((isOpen) => !isOpen)}
+              onMarkRead={markNotificationRead}
+              onMarkAllRead={markAllCurrentUserNotificationsRead}
+              onViewTimetable={viewNotificationTimetable}
+              onAcceptBooking={acceptNotificationBooking}
+              onDeclineBooking={declineNotificationBooking}
+              getBookingStatus={getBookingStatus}
             />
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
