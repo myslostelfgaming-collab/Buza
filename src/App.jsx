@@ -725,22 +725,45 @@ function App() {
         bookings.find((booking) => booking.id === bookingId) ??
         null;
 
+      if (!existingBooking) {
+        return currentState;
+      }
+
       const previousStatus =
         currentState.bookingStatusOverrides[bookingId] ??
-        existingBooking?.status ??
+        existingBooking.status ??
         null;
+
+      const isFinalStatus = status === "confirmed" || status === "declined";
 
       const updatedExtraBookings = currentState.extraBookings.map((booking) =>
         booking.id === bookingId ? { ...booking, status } : booking
       );
 
+      const cleanedNotifications = currentState.notifications.map(
+        (notification) => {
+          const shouldMarkRequestAsHandled =
+            isFinalStatus &&
+            notification.bookingId === bookingId &&
+            notification.type === "booking-requested";
+
+          if (!shouldMarkRequestAsHandled) {
+            return notification;
+          }
+
+          return {
+            ...notification,
+            read: true,
+          };
+        }
+      );
+
       const shouldNotifyStudent =
-        existingBooking &&
         existingBooking.studentId &&
         previousStatus !== status &&
-        (status === "confirmed" || status === "declined");
+        isFinalStatus;
 
-      const tutor = existingBooking ? getTutor(existingBooking.tutorId) : null;
+      const tutor = getTutor(existingBooking.tutorId);
       const studentUser = shouldNotifyStudent
         ? getStudentUser(existingBooking.studentId)
         : null;
@@ -781,8 +804,8 @@ function App() {
           [bookingId]: status,
         },
         notifications: studentNotification
-          ? [studentNotification, ...currentState.notifications]
-          : currentState.notifications,
+          ? [studentNotification, ...cleanedNotifications]
+          : cleanedNotifications,
       };
     });
   };
@@ -817,7 +840,6 @@ function App() {
     }
 
     updateBookingStatus(notification.bookingId, "confirmed");
-    markNotificationRead(notification.id);
   };
 
   const declineNotificationBooking = (notification) => {
@@ -826,7 +848,6 @@ function App() {
     }
 
     updateBookingStatus(notification.bookingId, "declined");
-    markNotificationRead(notification.id);
   };
 
   const addAvailabilityWindow = (availabilityWindow) => {
