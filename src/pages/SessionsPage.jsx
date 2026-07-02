@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CalendarViewToggle from "../components/CalendarViewToggle";
 import DayCalendar from "../components/DayCalendar";
+import EventDetailPopover from "../components/EventDetailPopover";
 import MonthCalendar from "../components/MonthCalendar";
 import TutorCalendarEditor from "../components/TutorCalendarEditor";
 import TutorGroupClassCreator from "../components/TutorGroupClassCreator";
@@ -31,6 +32,8 @@ export default function SessionsPage({
   extraAdvertisedSessions = [],
   advertisedSessionBookingOverrides = {},
   bookingStatusOverrides = {},
+  timetableFocus = null,
+  onTimetableFocusHandled,
   onUpdateBookingStatus,
   onAddAvailabilityWindow,
   onUpdateAvailabilityWindow,
@@ -44,6 +47,19 @@ export default function SessionsPage({
 }) {
   const [calendarView, setCalendarView] = useState("week");
   const [selectedDate, setSelectedDate] = useState("2026-06-23");
+  const [focusedPopoverInfo, setFocusedPopoverInfo] = useState(null);
+
+  useEffect(() => {
+    if (!timetableFocus) {
+      return;
+    }
+
+    setCalendarView("week");
+
+    if (timetableFocus.eventDate) {
+      setSelectedDate(timetableFocus.eventDate);
+    }
+  }, [timetableFocus]);
 
   const allBookings = useMemo(
     () =>
@@ -167,6 +183,23 @@ export default function SessionsPage({
     allAdvertisedSessions,
   ]);
 
+  const handleFocusedEventReady = ({ event, anchorRect }) => {
+    setFocusedPopoverInfo({
+      event,
+      anchorRect,
+    });
+
+    if (typeof onTimetableFocusHandled === "function") {
+      onTimetableFocusHandled();
+    }
+  };
+
+  const handleFocusedEventMissing = () => {
+    if (typeof onTimetableFocusHandled === "function") {
+      onTimetableFocusHandled();
+    }
+  };
+
   return (
     <section>
       <h1 style={{ color: C.white, marginTop: 0 }}>My Timetable</h1>
@@ -176,6 +209,23 @@ export default function SessionsPage({
         have booked or joined. Tutors see their teaching timetable, advertised
         group classes, availability, and blocked times.
       </p>
+
+      {focusedPopoverInfo && (
+        <div
+          style={{
+            background: C.spark + "18",
+            border: `1px solid ${C.spark}`,
+            borderRadius: 14,
+            padding: 14,
+            color: C.text,
+            lineHeight: 1.6,
+            marginTop: 16,
+            marginBottom: 18,
+          }}
+        >
+          Opened the timetable item linked to your notification.
+        </div>
+      )}
 
       <div
         style={{
@@ -200,7 +250,14 @@ export default function SessionsPage({
 
         <CalendarViewToggle
           calendarView={calendarView}
-          onChange={setCalendarView}
+          onChange={(nextView) => {
+            setCalendarView(nextView);
+            setFocusedPopoverInfo(null);
+
+            if (timetableFocus && typeof onTimetableFocusHandled === "function") {
+              onTimetableFocusHandled();
+            }
+          }}
         />
 
         {currentUser.role === "tutor" && (
@@ -278,6 +335,9 @@ export default function SessionsPage({
             visibleEvents={visibleEvents}
             validationEvents={visibleEvents}
             currentUser={currentUser}
+            timetableFocus={timetableFocus}
+            onFocusedEventReady={handleFocusedEventReady}
+            onFocusedEventMissing={handleFocusedEventMissing}
             onUpdateBookingStatus={onUpdateBookingStatus}
             onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveAdvertisedSession={onRemoveAdvertisedSession}
@@ -311,6 +371,14 @@ export default function SessionsPage({
             onOpenDay={(date) => {
               setSelectedDate(date);
               setCalendarView("day");
+              setFocusedPopoverInfo(null);
+
+              if (
+                timetableFocus &&
+                typeof onTimetableFocusHandled === "function"
+              ) {
+                onTimetableFocusHandled();
+              }
             }}
             visibleEvents={visibleEvents}
             currentUser={currentUser}
@@ -324,6 +392,23 @@ export default function SessionsPage({
           />
         )}
       </div>
+
+      {focusedPopoverInfo && (
+        <EventDetailPopover
+          event={focusedPopoverInfo.event}
+          anchorRect={focusedPopoverInfo.anchorRect}
+          currentUser={currentUser}
+          allEvents={visibleEvents}
+          onClose={() => setFocusedPopoverInfo(null)}
+          onUpdateBookingStatus={onUpdateBookingStatus}
+          onUpdateAdvertisedSession={onUpdateAdvertisedSession}
+          onRemoveAdvertisedSession={onRemoveAdvertisedSession}
+          onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
+          onRemoveAvailabilityWindow={onRemoveAvailabilityWindow}
+          onUpdateBlockedTime={onUpdateBlockedTime}
+          onRemoveBlockedTime={onRemoveBlockedTime}
+        />
+      )}
     </section>
   );
 }

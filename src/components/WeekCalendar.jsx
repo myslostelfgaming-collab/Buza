@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import EventDetailPopover from "./EventDetailPopover";
 import TimetableEventCard from "./TimetableEventCard";
 import { C, inputStyle } from "../data/theme";
@@ -36,6 +36,18 @@ function minutesToTime(totalMinutes) {
   const minutes = totalMinutes % 60;
 
   return `${pad(hours)}:${pad(minutes)}`;
+}
+
+function roundDownToStep(minutes) {
+  return Math.floor(minutes / TIME_STEP_MINUTES) * TIME_STEP_MINUTES;
+}
+
+function roundUpToStep(minutes) {
+  return Math.ceil(minutes / TIME_STEP_MINUTES) * TIME_STEP_MINUTES;
+}
+
+function clampMinutes(minutes) {
+  return Math.min(Math.max(minutes, 6 * 60), 22 * 60 + 30);
 }
 
 function generateTimeOptions() {
@@ -132,11 +144,60 @@ function getEventGridPosition(event, startTime, endTime) {
   };
 }
 
+function getFocusEvent(visibleEvents, timetableFocus) {
+  if (!timetableFocus?.eventId) {
+    return null;
+  }
+
+  return (
+    visibleEvents.find((event) => {
+      if (event.id !== timetableFocus.eventId) {
+        return false;
+      }
+
+      if (timetableFocus.eventKind && event.kind !== timetableFocus.eventKind) {
+        return false;
+      }
+
+      return true;
+    }) ?? null
+  );
+}
+
+function getFocusKey(timetableFocus) {
+  if (!timetableFocus?.eventId) {
+    return "";
+  }
+
+  return `${timetableFocus.eventKind ?? "event"}-${timetableFocus.eventId}-${
+    timetableFocus.createdAt ?? ""
+  }`;
+}
+
+function getFallbackAnchorRect() {
+  const left = Math.min(
+    window.innerWidth - 420,
+    Math.max(12, window.innerWidth / 2 - 190)
+  );
+
+  return {
+    left,
+    right: left + 380,
+    top: 170,
+    bottom: 200,
+    width: 380,
+    height: 30,
+  };
+}
+
 export default function WeekCalendar({
   weekDays,
   visibleEvents,
   validationEvents = visibleEvents,
   currentUser,
+  timetableFocus = null,
+  onFocusedEventReady,
+  onFocusedEventMissing,
   onUpdateBookingStatus,
   onUpdateAdvertisedSession,
   onRemoveAdvertisedSession,
@@ -150,6 +211,9 @@ export default function WeekCalendar({
   const [zoom, setZoom] = useState("compact");
   const [selectedEventInfo, setSelectedEventInfo] = useState(null);
 
+  const eventRefs = useRef({});
+  const handledFocusKeyRef = useRef("");
+
   const timeOptions = generateTimeOptions();
   const timeSlots = generateTimeSlots(startTime, endTime);
   const rowHeight = zoomSettings[zoom].rowHeight;
@@ -161,6 +225,115 @@ export default function WeekCalendar({
   const eventsOutsideWindow = visibleEvents.filter(
     (event) => !eventOverlapsWindow(event, startTime, endTime)
   );
+
+  useEffect(() => {
+    if (!timetableFocus?.eventId) {
+      return;
+    }
+
+    const focusKey = getFocusKey(timetableFocus);
+
+    if (handledFocusKeyRef.current === focusKey) {
+      return;
+    }
+
+    const focusedEvent = getFocusEvent(visibleEvents, timetableFocus);
+
+    if (!focusedEvent) {
+      if (typeof onFocusedEventMissing === "function") {
+        onFocusedEventMissing();
+      }
+
+      return;
+    }
+
+    const eventStart = getMinutesFromDateTime(focusedEvent.startTime);
+    const eventEnd = getMinutesFromDateTime(focusedEvent.endTime);
+
+    if (eventStart === null || eventEnd === null) {
+      if (typeof onFocusedEventMissing === "function") {
+        onFocusedEventMissing();
+      }
+
+      return;
+    }
+
+    const windowStart = timeToMinutes(startTime);
+    const windowEnd = timeToMinutes(endTime);
+    const isInsideCurrentWindow = eventStart < windowEnd && eventEnd > windowStart;
+
+    if (!isInsideCurrentWindow) {
+      const nextStartTime = minutesToTime(
+        clampMinutes(roundDownToStep(eventStart - 30))
+      );
+      const nextEndTime = minutesToTime(
+        clampMinutes(roundUpToStep(eventEnd + 30))
+      );
+
+      if (timeToMinutes(nextEndTime) > timeToMinutes(nextStartTime)) {
+        setStartTime(nextStartTime);
+        setEndTime(nextEndTime);
+        return;
+      }
+    }
+
+    let cancelled = false;
+    let retryCount = 0;
+
+    const openFocusedEvent = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const eventNode = eventRefs.current[focusedEvent.id];
+
+      if (!eventNode && retryCount < 10) {
+        retryCount += 1;
+        window.setTimeout(openFocusedEvent, 100);
+        return;
+      }
+
+      if (eventNode) {
+        eventNode.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "center",
+        });
+      }
+
+      window.setTimeout(() => {
+        if (cancelled) {
+          return;
+        }
+
+        const refreshedEventNode = eventRefs.current[focusedEvent.id];
+
+        handledFocusKeyRef.current = focusKey;
+
+        if (typeof onFocusedEventReady === "function") {
+          onFocusedEventReady({
+            event: focusedEvent,
+            anchorRect:
+              refreshedEventNode?.getBoundingClientRect() ?? getFallbackAnchorRect(),
+          });
+        }
+      }, 280);
+    };
+
+    const timer = window.setTimeout(openFocusedEvent, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    timetableFocus,
+    visibleEvents,
+    startTime,
+    endTime,
+    onFocusedEventReady,
+    onFocusedEventMissing,
+  ]);
 
   const updateStartTime = (value) => {
     setStartTime(value);
@@ -404,16 +577,30 @@ export default function WeekCalendar({
               return null;
             }
 
+            const isFocusedEvent =
+              timetableFocus?.eventId === event.id &&
+              (!timetableFocus.eventKind || timetableFocus.eventKind === event.kind);
+
             return (
               <div
                 key={event.id}
+                ref={(node) => {
+                  if (node) {
+                    eventRefs.current[event.id] = node;
+                  } else {
+                    delete eventRefs.current[event.id];
+                  }
+                }}
                 style={{
                   gridColumn: dayIndex + 2,
                   gridRow: `${position.rowStart} / span ${position.rowSpan}`,
-                  zIndex: getEventLayer(event),
+                  zIndex: isFocusedEvent ? 20 : getEventLayer(event),
                   padding: zoom === "compact" ? 3 : 5,
                   minWidth: 0,
                   overflow: "hidden",
+                  outline: isFocusedEvent ? `2px solid ${C.spark}` : "none",
+                  outlineOffset: -2,
+                  borderRadius: 10,
                 }}
               >
                 <div

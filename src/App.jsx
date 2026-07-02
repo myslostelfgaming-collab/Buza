@@ -159,12 +159,18 @@ function SmallActionButton({
           : isMuted
           ? C.surface
           : C.spark,
-        color: isSuccess || variant === "default" ? "#000" : isDanger ? "#F87171" : C.text,
-        border: isSuccess || variant === "default"
-          ? "none"
-          : isDanger
-          ? "1px solid #F87171"
-          : `1px solid ${C.border}`,
+        color:
+          isSuccess || variant === "default"
+            ? "#000"
+            : isDanger
+            ? "#F87171"
+            : C.text,
+        border:
+          isSuccess || variant === "default"
+            ? "none"
+            : isDanger
+            ? "1px solid #F87171"
+            : `1px solid ${C.border}`,
         borderRadius: 999,
         padding: "7px 10px",
         fontSize: 12,
@@ -517,6 +523,7 @@ function App() {
   const [demoState, setDemoState] = useState(loadDemoState);
   const [currentUserId, setCurrentUserId] = useState(defaultCurrentUserId);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [timetableFocus, setTimetableFocus] = useState(null);
 
   const {
     extraBookings,
@@ -560,11 +567,13 @@ function App() {
 
   const viewTutor = (tutorId) => {
     setSelectedTutorId(tutorId);
+    setTimetableFocus(null);
     setPage("profile");
   };
 
   const startBooking = (tutorId = null) => {
     setSelectedTutorId(tutorId);
+    setTimetableFocus(null);
     setPage("booking");
   };
 
@@ -580,6 +589,7 @@ function App() {
     localStorage.removeItem(BUZA_STORAGE_KEY);
     setDemoState(initialDemoState);
     setShowNotifications(false);
+    setTimetableFocus(null);
   };
 
   const markNotificationRead = (notificationId) => {
@@ -778,8 +788,23 @@ function App() {
   };
 
   const viewNotificationTimetable = (notification) => {
+    const booking = notification.bookingId
+      ? getBookingById(notification.bookingId)
+      : null;
+
     if (!notification.read) {
       markNotificationRead(notification.id);
+    }
+
+    if (booking) {
+      setTimetableFocus({
+        eventId: notification.bookingId,
+        eventKind: "booking",
+        eventDate: booking.startTime.slice(0, 10),
+        createdAt: new Date().toISOString(),
+      });
+    } else {
+      setTimetableFocus(null);
     }
 
     setShowNotifications(false);
@@ -931,6 +956,8 @@ function App() {
         extraAdvertisedSessions={extraAdvertisedSessions}
         advertisedSessionBookingOverrides={advertisedSessionBookingOverrides}
         bookingStatusOverrides={bookingStatusOverrides}
+        timetableFocus={timetableFocus}
+        onTimetableFocusHandled={() => setTimetableFocus(null)}
         onUpdateBookingStatus={updateBookingStatus}
         onAddAvailabilityWindow={addAvailabilityWindow}
         onUpdateAvailabilityWindow={updateAvailabilityWindow}
@@ -1010,17 +1037,26 @@ function App() {
               <NavButton
                 label="Home"
                 active={page === "home"}
-                onClick={() => setPage("home")}
+                onClick={() => {
+                  setTimetableFocus(null);
+                  setPage("home");
+                }}
               />
               <NavButton
                 label="Discover"
                 active={page === "discover"}
-                onClick={() => setPage("discover")}
+                onClick={() => {
+                  setTimetableFocus(null);
+                  setPage("discover");
+                }}
               />
               <NavButton
                 label="Timetable"
                 active={page === "sessions"}
-                onClick={() => setPage("sessions")}
+                onClick={() => {
+                  setTimetableFocus(null);
+                  setPage("sessions");
+                }}
               />
               <NavButton
                 label="Book"
