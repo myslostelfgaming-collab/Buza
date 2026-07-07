@@ -241,6 +241,7 @@ export default function EventDetailPopover({
   allEvents = [],
   onClose,
   onUpdateBookingStatus,
+  onOpenLiveSession,
   onUpdateAdvertisedSession,
   onRemoveAdvertisedSession,
   onUpdateAvailabilityWindow,
@@ -268,6 +269,12 @@ export default function EventDetailPopover({
     event.status === "pending" &&
     typeof onUpdateBookingStatus === "function";
 
+  const canOpenLiveSession =
+    isBooking &&
+    event.status === "confirmed" &&
+    typeof onOpenLiveSession === "function" &&
+    (currentUser.role === "tutor" || currentUser.role === "student");
+
   const canTutorManageGroupClass =
     currentUser.role === "tutor" &&
     isGroupSession &&
@@ -291,6 +298,7 @@ export default function EventDetailPopover({
 
   const hasActions =
     canTutorManageBooking ||
+    canOpenLiveSession ||
     canTutorManageGroupClass ||
     canTutorManageAvailability ||
     canTutorManageBlockedTime;
@@ -704,6 +712,24 @@ export default function EventDetailPopover({
                   <strong style={{ color: C.white }}>Notes:</strong> {event.notes}
                 </div>
               )}
+
+              {canOpenLiveSession && (
+                <div
+                  style={{
+                    marginTop: 4,
+                    background: C.green + "14",
+                    border: `1px solid ${C.green}`,
+                    borderRadius: 12,
+                    padding: 10,
+                    color: C.text,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <strong style={{ color: C.green }}>Live session ready:</strong>{" "}
+                  This confirmed booking can now be opened in the BUZA Live Session
+                  Room.
+                </div>
+              )}
             </div>
 
             {hasActions && (
@@ -717,6 +743,19 @@ export default function EventDetailPopover({
                   paddingTop: 12,
                 }}
               >
+                {canOpenLiveSession && (
+                  <ActionButton
+                    variant="success"
+                    onClick={() =>
+                      closeAfter(() => onOpenLiveSession(event.id))
+                    }
+                  >
+                    {currentUser.role === "tutor"
+                      ? "Open session room"
+                      : "Join session"}
+                  </ActionButton>
+                )}
+
                 {canTutorManageBooking && (
                   <>
                     <ActionButton

@@ -199,6 +199,7 @@ export default function WeekCalendar({
   onFocusedEventReady,
   onFocusedEventMissing,
   onUpdateBookingStatus,
+  onOpenLiveSession,
   onUpdateAdvertisedSession,
   onRemoveAdvertisedSession,
   onUpdateAvailabilityWindow,
@@ -635,6 +636,7 @@ export default function WeekCalendar({
           allEvents={validationEvents}
           onClose={() => setSelectedEventInfo(null)}
           onUpdateBookingStatus={onUpdateBookingStatus}
+          onOpenLiveSession={onOpenLiveSession}
           onUpdateAdvertisedSession={onUpdateAdvertisedSession}
           onRemoveAdvertisedSession={onRemoveAdvertisedSession}
           onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}

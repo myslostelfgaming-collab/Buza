@@ -49,6 +49,7 @@ export default function DayCalendar({
   visibleEvents,
   currentUser,
   onUpdateBookingStatus,
+  onOpenLiveSession,
   onUpdateAdvertisedSession,
   onRemoveAdvertisedSession,
   onUpdateAvailabilityWindow,
@@ -156,6 +157,7 @@ export default function DayCalendar({
         validationEvents={visibleEvents}
         currentUser={currentUser}
         onUpdateBookingStatus={onUpdateBookingStatus}
+        onOpenLiveSession={onOpenLiveSession}
         onUpdateAdvertisedSession={onUpdateAdvertisedSession}
         onRemoveAdvertisedSession={onRemoveAdvertisedSession}
         onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}

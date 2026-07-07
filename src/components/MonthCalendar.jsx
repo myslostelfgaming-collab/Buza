@@ -117,6 +117,7 @@ export default function MonthCalendar({
   visibleEvents,
   currentUser,
   onUpdateBookingStatus,
+  onOpenLiveSession,
   onUpdateAdvertisedSession,
   onRemoveAdvertisedSession,
   onUpdateAvailabilityWindow,
@@ -386,6 +387,7 @@ export default function MonthCalendar({
           allEvents={visibleEvents}
           onClose={() => setSelectedEventInfo(null)}
           onUpdateBookingStatus={onUpdateBookingStatus}
+          onOpenLiveSession={onOpenLiveSession}
           onUpdateAdvertisedSession={onUpdateAdvertisedSession}
           onRemoveAdvertisedSession={onRemoveAdvertisedSession}
           onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}

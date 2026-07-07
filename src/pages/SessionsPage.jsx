@@ -35,6 +35,7 @@ export default function SessionsPage({
   timetableFocus = null,
   onTimetableFocusHandled,
   onUpdateBookingStatus,
+  onOpenLiveSession,
   onAddAvailabilityWindow,
   onUpdateAvailabilityWindow,
   onRemoveAvailabilityWindow,
@@ -339,6 +340,7 @@ export default function SessionsPage({
             onFocusedEventReady={handleFocusedEventReady}
             onFocusedEventMissing={handleFocusedEventMissing}
             onUpdateBookingStatus={onUpdateBookingStatus}
+            onOpenLiveSession={onOpenLiveSession}
             onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveAdvertisedSession={onRemoveAdvertisedSession}
             onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
@@ -355,6 +357,7 @@ export default function SessionsPage({
             visibleEvents={visibleEvents}
             currentUser={currentUser}
             onUpdateBookingStatus={onUpdateBookingStatus}
+            onOpenLiveSession={onOpenLiveSession}
             onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveAdvertisedSession={onRemoveAdvertisedSession}
             onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
@@ -383,6 +386,7 @@ export default function SessionsPage({
             visibleEvents={visibleEvents}
             currentUser={currentUser}
             onUpdateBookingStatus={onUpdateBookingStatus}
+            onOpenLiveSession={onOpenLiveSession}
             onUpdateAdvertisedSession={onUpdateAdvertisedSession}
             onRemoveAdvertisedSession={onRemoveAdvertisedSession}
             onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}
@@ -401,6 +405,7 @@ export default function SessionsPage({
           allEvents={visibleEvents}
           onClose={() => setFocusedPopoverInfo(null)}
           onUpdateBookingStatus={onUpdateBookingStatus}
+          onOpenLiveSession={onOpenLiveSession}
           onUpdateAdvertisedSession={onUpdateAdvertisedSession}
           onRemoveAdvertisedSession={onRemoveAdvertisedSession}
           onUpdateAvailabilityWindow={onUpdateAvailabilityWindow}

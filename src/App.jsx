@@ -6,6 +6,7 @@ import DiscoverPage from "./pages/DiscoverPage";
 import TutorProfilePage from "./pages/TutorProfilePage";
 import BookingPage from "./pages/BookingPage";
 import SessionsPage from "./pages/SessionsPage";
+import LiveSessionPage from "./pages/LiveSessionPage";
 import { bookings } from "./data/mockBookings";
 import { tutors } from "./data/mockTutors";
 import { C } from "./data/theme";
@@ -21,6 +22,8 @@ const initialDemoState = {
   advertisedSessionBookingOverrides: {},
   bookingStatusOverrides: {},
   notifications: [],
+  liveSessionStatusOverrides: {},
+  sessionFeedback: {},
 };
 
 function loadDemoState() {
@@ -196,6 +199,8 @@ function BookingStatusBadge({ status }) {
       ? "#F87171"
       : status === "pending"
       ? C.spark
+      : status === "cancelled"
+      ? C.muted
       : C.muted;
 
   return (
@@ -225,6 +230,7 @@ function NotificationBell({
   onMarkRead,
   onMarkAllRead,
   onViewTimetable,
+  onOpenSession,
   onAcceptBooking,
   onDeclineBooking,
   getBookingStatus,
@@ -337,8 +343,8 @@ function NotificationBell({
                 fontSize: 13,
               }}
             >
-              No notifications yet. Booking requests and tutor responses will
-              appear here.
+              No notifications yet. Booking requests, tutor responses, and
+              session updates will appear here.
             </div>
           ) : (
             <div
@@ -360,6 +366,14 @@ function NotificationBell({
                   bookingStatus === "pending";
 
                 const hasBookingLink = Boolean(notification.bookingId);
+
+                const hasSessionLink =
+                  Boolean(notification.bookingId) &&
+                  [
+                    "session-started",
+                    "session-ended",
+                    "session-feedback-submitted",
+                  ].includes(notification.type);
 
                 return (
                   <div
@@ -473,6 +487,15 @@ function NotificationBell({
                         </>
                       )}
 
+                      {hasSessionLink && (
+                        <SmallActionButton
+                          variant="success"
+                          onClick={() => onOpenSession(notification)}
+                        >
+                          Open session
+                        </SmallActionButton>
+                      )}
+
                       {hasBookingLink && (
                         <SmallActionButton
                           variant="default"
@@ -524,6 +547,7 @@ function App() {
   const [currentUserId, setCurrentUserId] = useState(defaultCurrentUserId);
   const [showNotifications, setShowNotifications] = useState(false);
   const [timetableFocus, setTimetableFocus] = useState(null);
+  const [activeLiveBookingId, setActiveLiveBookingId] = useState(null);
 
   const {
     extraBookings,
@@ -533,6 +557,8 @@ function App() {
     advertisedSessionBookingOverrides,
     bookingStatusOverrides,
     notifications,
+    liveSessionStatusOverrides,
+    sessionFeedback,
   } = demoState;
 
   useEffect(() => {
@@ -565,21 +591,62 @@ function App() {
     return bookingStatusOverrides[bookingId] ?? booking?.status ?? null;
   };
 
+  const getBookingWithCurrentStatus = (bookingId) => {
+    const booking = getBookingById(bookingId);
+
+    if (!booking) {
+      return null;
+    }
+
+    return {
+      ...booking,
+      status: getBookingStatus(bookingId),
+    };
+  };
+
+  const getLiveSessionStatus = (bookingId) => {
+    const bookingStatus = getBookingStatus(bookingId);
+
+    if (bookingStatus !== "confirmed") {
+      return "upcoming";
+    }
+
+    return liveSessionStatusOverrides[bookingId] ?? "upcoming";
+  };
+
   const viewTutor = (tutorId) => {
     setSelectedTutorId(tutorId);
     setTimetableFocus(null);
+    setActiveLiveBookingId(null);
     setPage("profile");
   };
 
   const startBooking = (tutorId = null) => {
     setSelectedTutorId(tutorId);
     setTimetableFocus(null);
+    setActiveLiveBookingId(null);
     setPage("booking");
+  };
+
+  const openLiveSession = (bookingId) => {
+    if (!bookingId) {
+      return;
+    }
+
+    setActiveLiveBookingId(bookingId);
+    setTimetableFocus(null);
+    setShowNotifications(false);
+    setPage("live-session");
+  };
+
+  const backToTimetable = () => {
+    setActiveLiveBookingId(null);
+    setPage("sessions");
   };
 
   const resetDemoData = () => {
     const confirmed = window.confirm(
-      "Reset all demo-created bookings, availability, blocked times, group classes, and notifications?"
+      "Reset all demo-created bookings, availability, blocked times, group classes, notifications, live sessions, and feedback?"
     );
 
     if (!confirmed) {
@@ -590,6 +657,7 @@ function App() {
     setDemoState(initialDemoState);
     setShowNotifications(false);
     setTimetableFocus(null);
+    setActiveLiveBookingId(null);
   };
 
   const markNotificationRead = (notificationId) => {
@@ -734,7 +802,7 @@ function App() {
         existingBooking.status ??
         null;
 
-      const isFinalStatus = status === "confirmed" || status === "declined";
+      const isFinalBookingStatus = status === "confirmed" || status === "declined";
 
       const updatedExtraBookings = currentState.extraBookings.map((booking) =>
         booking.id === bookingId ? { ...booking, status } : booking
@@ -743,7 +811,7 @@ function App() {
       const cleanedNotifications = currentState.notifications.map(
         (notification) => {
           const shouldMarkRequestAsHandled =
-            isFinalStatus &&
+            isFinalBookingStatus &&
             notification.bookingId === bookingId &&
             notification.type === "booking-requested";
 
@@ -761,7 +829,7 @@ function App() {
       const shouldNotifyStudent =
         existingBooking.studentId &&
         previousStatus !== status &&
-        isFinalStatus;
+        isFinalBookingStatus;
 
       const tutor = getTutor(existingBooking.tutorId);
       const studentUser = shouldNotifyStudent
@@ -803,9 +871,157 @@ function App() {
           ...currentState.bookingStatusOverrides,
           [bookingId]: status,
         },
+        liveSessionStatusOverrides:
+          status === "confirmed"
+            ? {
+                ...currentState.liveSessionStatusOverrides,
+                [bookingId]:
+                  currentState.liveSessionStatusOverrides[bookingId] ??
+                  "upcoming",
+              }
+            : currentState.liveSessionStatusOverrides,
         notifications: studentNotification
           ? [studentNotification, ...cleanedNotifications]
           : cleanedNotifications,
+      };
+    });
+  };
+
+  const startLiveSession = () => {
+    if (!activeLiveBookingId || currentUser.role !== "tutor") {
+      return;
+    }
+
+    setDemoState((currentState) => {
+      const booking =
+        currentState.extraBookings.find(
+          (item) => item.id === activeLiveBookingId
+        ) ??
+        bookings.find((item) => item.id === activeLiveBookingId) ??
+        null;
+
+      if (!booking) {
+        return currentState;
+      }
+
+      const studentUser = getStudentUser(booking.studentId);
+      const tutor = getTutor(booking.tutorId);
+
+      const studentNotification = studentUser
+        ? createNotification({
+            userId: studentUser.id,
+            type: "session-started",
+            title: "Session started",
+            message: `${tutor?.name ?? "Your tutor"} has started your BUZA session. You can now join the live session room.`,
+            bookingId: activeLiveBookingId,
+          })
+        : null;
+
+      return {
+        ...currentState,
+        liveSessionStatusOverrides: {
+          ...currentState.liveSessionStatusOverrides,
+          [activeLiveBookingId]: "live",
+        },
+        notifications: studentNotification
+          ? [studentNotification, ...currentState.notifications]
+          : currentState.notifications,
+      };
+    });
+  };
+
+  const endLiveSession = () => {
+    if (!activeLiveBookingId || currentUser.role !== "tutor") {
+      return;
+    }
+
+    setDemoState((currentState) => {
+      const booking =
+        currentState.extraBookings.find(
+          (item) => item.id === activeLiveBookingId
+        ) ??
+        bookings.find((item) => item.id === activeLiveBookingId) ??
+        null;
+
+      if (!booking) {
+        return currentState;
+      }
+
+      const studentUser = getStudentUser(booking.studentId);
+      const tutor = getTutor(booking.tutorId);
+
+      const studentNotification = studentUser
+        ? createNotification({
+            userId: studentUser.id,
+            type: "session-ended",
+            title: "Session ended — feedback needed",
+            message: `${tutor?.name ?? "Your tutor"} has ended the session. Please rate the lesson and leave feedback to close it out.`,
+            bookingId: activeLiveBookingId,
+          })
+        : null;
+
+      return {
+        ...currentState,
+        liveSessionStatusOverrides: {
+          ...currentState.liveSessionStatusOverrides,
+          [activeLiveBookingId]: "ended",
+        },
+        notifications: studentNotification
+          ? [studentNotification, ...currentState.notifications]
+          : currentState.notifications,
+      };
+    });
+  };
+
+  const submitSessionFeedback = ({ rating, comment }) => {
+    if (!activeLiveBookingId || currentUser.role !== "student") {
+      return;
+    }
+
+    setDemoState((currentState) => {
+      const booking =
+        currentState.extraBookings.find(
+          (item) => item.id === activeLiveBookingId
+        ) ??
+        bookings.find((item) => item.id === activeLiveBookingId) ??
+        null;
+
+      if (!booking) {
+        return currentState;
+      }
+
+      const tutorUser = getTutorUser(booking.tutorId);
+
+      const tutorNotification = tutorUser
+        ? createNotification({
+            userId: tutorUser.id,
+            type: "session-feedback-submitted",
+            title: "Session feedback submitted",
+            message: `${currentUser.name} rated the session ${rating}/5${
+              comment ? ` and left a comment.` : "."
+            } The session is now completed for demo purposes.`,
+            bookingId: activeLiveBookingId,
+          })
+        : null;
+
+      return {
+        ...currentState,
+        liveSessionStatusOverrides: {
+          ...currentState.liveSessionStatusOverrides,
+          [activeLiveBookingId]: "completed",
+        },
+        sessionFeedback: {
+          ...currentState.sessionFeedback,
+          [activeLiveBookingId]: {
+            rating,
+            comment,
+            submittedBy: currentUser.id,
+            submittedAt: new Date().toISOString(),
+          },
+        },
+        notifications: tutorNotification
+          ? [tutorNotification, ...currentState.notifications]
+          : currentState.notifications,
       };
     });
   };
@@ -830,8 +1046,21 @@ function App() {
       setTimetableFocus(null);
     }
 
+    setActiveLiveBookingId(null);
     setShowNotifications(false);
     setPage("sessions");
+  };
+
+  const openSessionFromNotification = (notification) => {
+    if (!notification.bookingId) {
+      return;
+    }
+
+    if (!notification.read) {
+      markNotificationRead(notification.id);
+    }
+
+    openLiveSession(notification.bookingId);
   };
 
   const acceptNotificationBooking = (notification) => {
@@ -937,6 +1166,10 @@ function App() {
     }));
   };
 
+  const liveSessionBooking = activeLiveBookingId
+    ? getBookingWithCurrentStatus(activeLiveBookingId)
+    : null;
+
   const pages = {
     home: (
       <HomePage
@@ -980,6 +1213,7 @@ function App() {
         timetableFocus={timetableFocus}
         onTimetableFocusHandled={() => setTimetableFocus(null)}
         onUpdateBookingStatus={updateBookingStatus}
+        onOpenLiveSession={openLiveSession}
         onAddAvailabilityWindow={addAvailabilityWindow}
         onUpdateAvailabilityWindow={updateAvailabilityWindow}
         onRemoveAvailabilityWindow={removeAvailabilityWindow}
@@ -989,6 +1223,26 @@ function App() {
         onAddAdvertisedSession={addAdvertisedSession}
         onUpdateAdvertisedSession={updateAdvertisedSession}
         onRemoveAdvertisedSession={removeAdvertisedSession}
+      />
+    ),
+    "live-session": (
+      <LiveSessionPage
+        currentUser={currentUser}
+        booking={liveSessionBooking}
+        sessionStatus={
+          activeLiveBookingId
+            ? getLiveSessionStatus(activeLiveBookingId)
+            : "upcoming"
+        }
+        existingFeedback={
+          activeLiveBookingId
+            ? sessionFeedback[activeLiveBookingId] ?? null
+            : null
+        }
+        onBackToTimetable={backToTimetable}
+        onStartSession={startLiveSession}
+        onEndSession={endLiveSession}
+        onSubmitFeedback={submitSessionFeedback}
       />
     ),
   };
@@ -1049,6 +1303,7 @@ function App() {
               onMarkRead={markNotificationRead}
               onMarkAllRead={markAllCurrentUserNotificationsRead}
               onViewTimetable={viewNotificationTimetable}
+              onOpenSession={openSessionFromNotification}
               onAcceptBooking={acceptNotificationBooking}
               onDeclineBooking={declineNotificationBooking}
               getBookingStatus={getBookingStatus}
@@ -1060,6 +1315,7 @@ function App() {
                 active={page === "home"}
                 onClick={() => {
                   setTimetableFocus(null);
+                  setActiveLiveBookingId(null);
                   setPage("home");
                 }}
               />
@@ -1068,6 +1324,7 @@ function App() {
                 active={page === "discover"}
                 onClick={() => {
                   setTimetableFocus(null);
+                  setActiveLiveBookingId(null);
                   setPage("discover");
                 }}
               />
@@ -1076,6 +1333,7 @@ function App() {
                 active={page === "sessions"}
                 onClick={() => {
                   setTimetableFocus(null);
+                  setActiveLiveBookingId(null);
                   setPage("sessions");
                 }}
               />
@@ -1090,7 +1348,7 @@ function App() {
           </div>
         </header>
 
-        {pages[page]}
+        {pages[page] ?? pages.home}
       </div>
     </main>
   );
