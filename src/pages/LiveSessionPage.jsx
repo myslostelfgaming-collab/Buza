@@ -68,13 +68,19 @@ function Pill({ children, color = C.muted }) {
   );
 }
 
-function PrimaryButton({ children, onClick, disabled = false, tone = "primary" }) {
+function PrimaryButton({
+  children,
+  onClick,
+  disabled = false,
+  tone = "primary",
+  type = "button",
+}) {
   const isDanger = tone === "danger";
   const isSuccess = tone === "success";
 
   return (
     <button
-      type="button"
+      type={type}
       onClick={onClick}
       disabled={disabled}
       style={{
@@ -260,7 +266,9 @@ function FeedbackForm({ onSubmitFeedback }) {
       </label>
 
       <div>
-        <PrimaryButton tone="success">Submit feedback</PrimaryButton>
+        <PrimaryButton type="submit" tone="success">
+          Submit feedback
+        </PrimaryButton>
       </div>
     </form>
   );

@@ -24,6 +24,14 @@ const weekDays = [
   { label: "Sun", date: "2026-06-28" },
 ];
 
+function getBookingSessionStatus(booking, liveSessionStatusOverrides) {
+  if (booking.status !== "confirmed") {
+    return null;
+  }
+
+  return liveSessionStatusOverrides[booking.id] ?? "upcoming";
+}
+
 export default function SessionsPage({
   currentUser,
   extraBookings = [],
@@ -32,6 +40,7 @@ export default function SessionsPage({
   extraAdvertisedSessions = [],
   advertisedSessionBookingOverrides = {},
   bookingStatusOverrides = {},
+  liveSessionStatusOverrides = {},
   timetableFocus = null,
   onTimetableFocusHandled,
   onUpdateBookingStatus,
@@ -124,6 +133,10 @@ export default function SessionsPage({
         .map((booking) => ({
           ...booking,
           kind: "booking",
+          sessionStatus: getBookingSessionStatus(
+            booking,
+            liveSessionStatusOverrides
+          ),
         }));
 
       const bookedGroupSessions = allAdvertisedSessions
@@ -144,6 +157,10 @@ export default function SessionsPage({
         .map((booking) => ({
           ...booking,
           kind: "booking",
+          sessionStatus: getBookingSessionStatus(
+            booking,
+            liveSessionStatusOverrides
+          ),
         }));
 
       const tutorGroupSessions = allAdvertisedSessions
@@ -182,6 +199,7 @@ export default function SessionsPage({
     allAvailabilityWindows,
     allBlockedTimes,
     allAdvertisedSessions,
+    liveSessionStatusOverrides,
   ]);
 
   const handleFocusedEventReady = ({ event, anchorRect }) => {
@@ -272,9 +290,9 @@ export default function SessionsPage({
             }}
           >
             <span>Legend:</span>
-            <span style={{ color: C.green }}>● Available</span>
-            <span style={{ color: C.blue }}>● Group class</span>
-            <span style={{ color: C.spark }}>● Pending</span>
+            <span style={{ color: C.green }}>● Available / Live</span>
+            <span style={{ color: C.blue }}>● Group / Completed</span>
+            <span style={{ color: C.spark }}>● Pending / Awaiting feedback</span>
             <span style={{ color: "#F87171" }}>● Declined</span>
             <span style={{ color: C.muted }}>● Blocked</span>
           </div>

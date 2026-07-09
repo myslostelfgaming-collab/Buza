@@ -1210,6 +1210,7 @@ function App() {
         extraAdvertisedSessions={extraAdvertisedSessions}
         advertisedSessionBookingOverrides={advertisedSessionBookingOverrides}
         bookingStatusOverrides={bookingStatusOverrides}
+        liveSessionStatusOverrides={liveSessionStatusOverrides}
         timetableFocus={timetableFocus}
         onTimetableFocusHandled={() => setTimetableFocus(null)}
         onUpdateBookingStatus={updateBookingStatus}
